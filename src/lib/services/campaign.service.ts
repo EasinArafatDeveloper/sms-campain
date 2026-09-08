@@ -44,25 +44,38 @@ export class CampaignService {
     const length = data.trackingLength || 6;
     const destUrl = data.destinationUrl.trim();
 
-    // 1. Create Campaign Document in 'draft' or 'generating_links'
+    // 1. Create Campaign Document
     const campaign = await CampaignModel.create({
       organizationId: orgObjId,
       name: data.name.trim(),
       senderId: data.senderId.trim(),
       message: data.message,
-      destinationUrl: destUrl,
-      trackingFormat: format,
-      trackingLength: length,
       status: "queued",
+      audienceId: data.audienceId ? new mongoose.Types.ObjectId(data.audienceId) : undefined,
+      audienceName: data.audienceName || "Custom Audience",
+      recipientCount: 0,
+      trackingConfig: {
+        destinationUrl: destUrl,
+        format,
+        length,
+      },
+      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+      createdBy: userObjId,
       statistics: {
         totalRecipients: 0,
+        linksGenerated: 0,
+        queued: 0,
+        processing: 0,
         sent: 0,
         delivered: 0,
         failed: 0,
-        queued: 0,
+        pendingRetry: 0,
         totalClicks: 0,
-        uniqueClicks: 0,
-        engagementScore: 0,
+        uniqueClickers: 0,
+        repeatClickers: 0,
+        highIntentLeads: 0,
+        deliveryRate: 0,
+        clickRate: 0,
       },
     });
 
