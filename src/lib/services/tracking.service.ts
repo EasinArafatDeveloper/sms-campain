@@ -82,6 +82,41 @@ export class TrackingService {
   }
 
   /**
+   * Detects automated link preview crawlers, bots, or browser prefetch requests.
+   */
+  static isBotOrPreview(userAgent?: string, purpose?: string): boolean {
+    if (purpose && (purpose.includes("prefetch") || purpose.includes("preview"))) {
+      return true;
+    }
+    if (!userAgent) return false;
+    const ua = userAgent.toLowerCase();
+    const botKeywords = [
+      "bot",
+      "spider",
+      "crawler",
+      "preview",
+      "google-page-preview",
+      "google-read-aloud",
+      "googlebot",
+      "facebookexternalhit",
+      "whatsapp",
+      "telegrambot",
+      "twitterbot",
+      "slackbot",
+      "applebot",
+      "discordbot",
+      "bingbot",
+      "duckduckbot",
+      "yandexbot",
+      "skypeuripreview",
+      "viber",
+      "lighthouse",
+      "headlesschrome",
+    ];
+    return botKeywords.some((keyword) => ua.includes(keyword));
+  }
+
+  /**
    * Resolves a tracking ID, logs click telemetry asynchronously, and returns destination URL.
    */
   static async resolveAndTrackClick(
@@ -90,6 +125,7 @@ export class TrackingService {
       ip?: string;
       userAgent?: string;
       referer?: string;
+      purpose?: string;
     }
   ): Promise<{ destinationUrl: string | null; campaignId?: string; recipientId?: string }> {
     await connectToDatabase();
@@ -105,6 +141,21 @@ export class TrackingService {
     const orgId = link.organizationId.toString();
     const campId = link.campaignId.toString();
     const recipId = link.recipientId.toString();
+
+    // 1. Check for link preview bots / prefetches
+    const isBot = this.isBotOrPreview(metadata?.userAgent, metadata?.purpose);
+
+    // 2. Debounce: If link was clicked less than 2.5 seconds ago (e.g. mobile browser touch follow-ups), skip double increment
+    const isRapidDuplicate =
+      link.lastClickedAt && now.getTime() - new Date(link.lastClickedAt).getTime() < 2500;
+
+    if (isBot || isRapidDuplicate) {
+      return {
+        destinationUrl: link.destinationUrl,
+        campaignId: campId,
+        recipientId: recipId,
+      };
+    }
 
     // Fire background updates without blocking redirect
     (async () => {

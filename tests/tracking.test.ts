@@ -46,4 +46,12 @@ describe("Tracking & Phone Normalization Tests", () => {
     const seg = calculateSmsSegments(longText);
     expect(seg.segments).toBe(2);
   });
+
+  it("should detect preview crawlers and prefetch requests", () => {
+    expect(TrackingService.isBotOrPreview("Mozilla/5.0 (compatible; Google-Page-Preview/1.0)")).toBe(true);
+    expect(TrackingService.isBotOrPreview("facebookexternalhit/1.1")).toBe(true);
+    expect(TrackingService.isBotOrPreview("WhatsApp/2.21.12.21")).toBe(true);
+    expect(TrackingService.isBotOrPreview("Mozilla/5.0", "prefetch")).toBe(true);
+    expect(TrackingService.isBotOrPreview("Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1")).toBe(false);
+  });
 });

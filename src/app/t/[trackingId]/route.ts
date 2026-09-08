@@ -8,11 +8,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ trac
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
     const referer = req.headers.get("referer") || undefined;
+    const purpose = req.headers.get("purpose") || req.headers.get("sec-purpose") || req.headers.get("x-purpose") || undefined;
 
     const result = await TrackingService.resolveAndTrackClick(trackingId, {
       ip,
       userAgent,
       referer,
+      purpose,
     });
 
     if (!result.destinationUrl) {
