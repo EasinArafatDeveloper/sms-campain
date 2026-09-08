@@ -118,13 +118,13 @@ export class DeliveryService {
       DeliveryJobModel.countDocuments(query),
     ]);
 
-    // Attach click status from CampaignRecipient junction
+    // Attach click status and trackingUrl from CampaignRecipient junction
     const trackingIds = jobs.map((j) => j.trackingId);
     const recipients = await CampaignRecipientModel.find({
       organizationId: orgObjId,
       trackingId: { $in: trackingIds },
     })
-      .select("trackingId clickStatus clickCount firstClickedAt")
+      .select("trackingId trackingUrl clickStatus clickCount firstClickedAt")
       .lean();
 
     const recipMap = new Map(recipients.map((r) => [r.trackingId, r]));
@@ -133,6 +133,7 @@ export class DeliveryService {
       const r = recipMap.get(job.trackingId);
       return {
         ...job,
+        trackingUrl: r?.trackingUrl,
         clickStatus: r?.clickStatus || "not_clicked",
         clickCount: r?.clickCount || 0,
       };

@@ -38,7 +38,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const campaign = await CampaignService.createCampaign(orgId, userId, validated.data as any);
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+    const requestOrigin = host ? `${proto}://${host}` : undefined;
+
+    const campaign = await CampaignService.createCampaign(
+      orgId,
+      userId,
+      validated.data as any,
+      { baseUrl: requestOrigin ? `${requestOrigin}/t` : undefined }
+    );
     return NextResponse.json({ success: true, campaign }, { status: 201 });
   } catch (err: any) {
     console.error("[Campaigns API] Create error:", err);

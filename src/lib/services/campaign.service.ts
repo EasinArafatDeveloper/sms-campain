@@ -33,7 +33,8 @@ export class CampaignService {
   static async createCampaign(
     organizationId: string,
     userId: string,
-    data: CreateCampaignDTO
+    data: CreateCampaignDTO,
+    options?: { baseUrl?: string }
   ): Promise<ICampaign> {
     await connectToDatabase();
     const orgObjId = new mongoose.Types.ObjectId(organizationId);
@@ -49,40 +50,26 @@ export class CampaignService {
       name: data.name.trim(),
       senderId: data.senderId.trim(),
       message: data.message,
-      status: "generating_links",
-      audienceId: data.audienceId ? new mongoose.Types.ObjectId(data.audienceId) : undefined,
-      audienceName: data.audienceName || "Custom Audience",
-      recipientCount: 0,
-      trackingConfig: {
-        destinationUrl: destUrl,
-        format,
-        length,
-      },
-      scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
-      createdBy: userObjId,
+      destinationUrl: destUrl,
+      trackingFormat: format,
+      trackingLength: length,
+      status: "queued",
       statistics: {
         totalRecipients: 0,
-        linksGenerated: 0,
-        queued: 0,
-        processing: 0,
         sent: 0,
         delivered: 0,
         failed: 0,
-        pendingRetry: 0,
+        queued: 0,
         totalClicks: 0,
-        uniqueClickers: 0,
-        repeatClickers: 0,
-        highIntentLeads: 0,
-        deliveryRate: 0,
-        clickRate: 0,
+        uniqueClicks: 0,
+        engagementScore: 0,
       },
     });
 
-    // 2. Resolve recipients
-    let recipientsList: { recipientId: mongoose.Types.ObjectId; phone: string; name?: string }[] = [];
+    // 2. Fetch or create recipients from direct input / CSV or audience
+    let recipientsList: Array<{ recipientId: mongoose.Types.ObjectId; phone: string; name?: string }> = [];
 
-    if (data.contacts && data.contacts.length > 0) {
-      // Process uploaded contact list
+    if (data.contacts && Array.isArray(data.contacts) && data.contacts.length > 0) {
       for (const contact of data.contacts) {
         const { normalized, isValid } = normalizePhoneNumber(contact.phone);
         if (isValid) {
@@ -123,13 +110,24 @@ export class CampaignService {
     // 3. Generate unique tracking IDs and tracking links
     if (totalRecipients > 0) {
       const trackingIds = await TrackingService.generateBatchIds(totalRecipients, format, length);
-      const appBaseUrl =
-        process.env.TRACKING_BASE_URL ||
-        (process.env.NEXT_PUBLIC_APP_URL
-          ? `${process.env.NEXT_PUBLIC_APP_URL}/t`
-          : process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}/t`
-          : "http://localhost:3000/t");
+      
+      let resolvedBase = options?.baseUrl || process.env.TRACKING_BASE_URL;
+      if (!resolvedBase) {
+        if (process.env.NEXT_PUBLIC_APP_URL) {
+          resolvedBase = `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/t`;
+        } else if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+          resolvedBase = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/t`;
+        } else if (process.env.VERCEL_URL) {
+          resolvedBase = `https://${process.env.VERCEL_URL}/t`;
+        } else {
+          resolvedBase = "http://localhost:3000/t";
+        }
+      } else {
+        if (!resolvedBase.endsWith("/t") && !resolvedBase.endsWith("/t/")) {
+          resolvedBase = `${resolvedBase.replace(/\/+$/, "")}/t`;
+        }
+      }
+      const appBaseUrl = resolvedBase.replace(/\/+$/, "");
 
       const trackingLinksToInsert: any[] = [];
       const campaignRecipientsToInsert: any[] = [];
