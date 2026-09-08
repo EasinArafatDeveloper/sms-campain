@@ -215,7 +215,8 @@ function CreateCampaignForm() {
     }
   };
 
-  const sampleTrackingUrl = `http://localhost:3000/t/${trackingFormat === "numeric" ? "583214" : "A8K72P"}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const sampleTrackingUrl = `${origin}/t/${trackingFormat === "numeric" ? "583214" : "A8K72P"}`;
   const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
 
   return (

@@ -296,7 +296,8 @@ function LinkGeneratorContent() {
                   </tr>
                 ) : (
                   mappings.map((m, idx) => {
-                    const shortUrl = `http://localhost:3000/t/${m.trackingId}`;
+                    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+                    const shortUrl = `${origin}/t/${m.trackingId}`;
                     return (
                       <tr key={m._id || idx} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-6 py-3.5 font-bold text-slate-900 font-sans">

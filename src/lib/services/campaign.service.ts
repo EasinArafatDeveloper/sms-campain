@@ -123,7 +123,13 @@ export class CampaignService {
     // 3. Generate unique tracking IDs and tracking links
     if (totalRecipients > 0) {
       const trackingIds = await TrackingService.generateBatchIds(totalRecipients, format, length);
-      const appBaseUrl = process.env.TRACKING_BASE_URL || "http://localhost:3000/t";
+      const appBaseUrl =
+        process.env.TRACKING_BASE_URL ||
+        (process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL}/t`
+          : process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}/t`
+          : "http://localhost:3000/t");
 
       const trackingLinksToInsert: any[] = [];
       const campaignRecipientsToInsert: any[] = [];
