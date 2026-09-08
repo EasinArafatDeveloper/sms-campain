@@ -1,0 +1,53 @@
+{
+  "name": "smspro",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx scripts/seed.ts",
+    "reset": "tsx scripts/reset-db.ts",
+    "worker": "tsx scripts/worker.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.34.0",
+    "clsx": "^2.1.1",
+    "ioredis": "^5.4.2",
+    "jose": "^5.9.6",
+    "lucide-react": "^0.469.0",
+    "mongoose": "^8.9.0",
+    "nanoid": "^5.0.9",
+    "next": "^15.1.0",
+    "papaparse": "^5.4.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "recharts": "^2.15.0",
+    "sonner": "^1.7.1",
+    "tailwind-merge": "^2.6.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.2",
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
