@@ -147,13 +147,15 @@ export class DeliveryService {
     };
   }
 
-  /**
-   * Retrieves live API Health metrics for BulkSMSBD.
-   */
   static async getApiHealth(organizationId: string): Promise<ApiHealthMetrics> {
+    await connectToDatabase();
     const provider = await getSmsProviderForOrg(organizationId);
     const health = await provider.healthCheck();
     const balanceRes = await provider.getBalance();
+    const pendingRetries = await DeliveryJobModel.countDocuments({
+      organizationId: new mongoose.Types.ObjectId(organizationId),
+      status: { $in: ["retrying", "pending_retry"] },
+    });
 
     return {
       provider: provider.name.toUpperCase(),
@@ -161,7 +163,7 @@ export class DeliveryService {
       averageResponseMs: health.responseTimeMs || 42,
       successRate: 99.4,
       requestsPerMinute: 340,
-      retries: 22,
+      retries: pendingRetries,
       balance: balanceRes.balance,
       currency: balanceRes.currency || "BDT",
     };

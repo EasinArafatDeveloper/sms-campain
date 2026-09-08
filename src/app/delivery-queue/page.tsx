@@ -125,10 +125,13 @@ export default function DeliveryQueuePage() {
               size="md"
               onClick={handleProcessBatch}
               isLoading={isProcessing}
+              disabled={stats.totalQueued === 0}
               className="gap-1.5 shadow-sm"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>Dispatch Batch (50 SMS)</span>
+              <span>
+                {stats.totalQueued > 0 ? `Dispatch Queue (${stats.totalQueued} SMS)` : "Dispatch Queue (0 SMS)"}
+              </span>
             </Button>
           </div>
         </div>
@@ -334,19 +337,28 @@ export default function DeliveryQueuePage() {
                   <CardTitle className="text-sm">Live Activity Feed</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 text-xs">
-                <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-100 text-slate-700">
-                  <div className="font-semibold text-emerald-900">Delivery Status Updated</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">8801711234567 • Delivered successfully</div>
-                </div>
-                <div className="p-2.5 rounded-lg bg-purple-50/60 border border-purple-100 text-slate-700">
-                  <div className="font-semibold text-purple-900">Link Click Attributed</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Tracking ID 583214 • Destination opened</div>
-                </div>
-                <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-slate-700">
-                  <div className="font-semibold text-blue-900">Batch Job Dispatched</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">50 messages queued to BulkSMSBD</div>
-                </div>
+              <CardContent className="space-y-2.5 text-xs">
+                {jobs.length === 0 ? (
+                  <div className="p-4 text-center text-slate-400 text-[11px]">
+                    No queue activity. Newly launched campaigns will appear here.
+                  </div>
+                ) : (
+                  jobs.slice(0, 4).map((job: any, i: number) => (
+                    <div
+                      key={job._id || i}
+                      className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-700 space-y-1"
+                    >
+                      <div className="flex items-center justify-between font-semibold text-slate-900">
+                        <span className="font-mono">{job.phone}</span>
+                        <StatusBadge status={job.status} />
+                      </div>
+                      <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>Tracking: {job.trackingId}</span>
+                        <span>{formatDateTime(job.createdAt)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>
