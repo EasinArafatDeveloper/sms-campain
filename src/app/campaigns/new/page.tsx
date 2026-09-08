@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
@@ -19,6 +19,9 @@ import {
   FileText,
   AlertCircle,
   Smartphone,
+  Download,
+  Trash2,
+  Check,
 } from "lucide-react";
 
 export default function CreateCampaignPage() {
@@ -49,14 +52,135 @@ function CreateCampaignForm() {
     isRetargeting ? "segment" : "upload"
   );
   const [audienceName, setAudienceName] = useState(
-    isRetargeting ? "Highly Active Segment" : "Customer Contact List"
+    isRetargeting ? "High-Intent Leads Segment" : "CSV Upload Contact List"
   );
   const [recipientCount, setRecipientCount] = useState(0);
   const [destinationUrl, setDestinationUrl] = useState("https://mybrand.com/offer");
   const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("numeric");
   const [trackingLength, setTrackingLength] = useState(6);
 
+  // File Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedContacts, setUploadedContacts] = useState<{ phone: string; name?: string; customId?: string }[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const smsStats = calculateSmsSegments(message);
+
+  const parseContactText = (text: string, filename: string = "contacts.csv") => {
+    setUploadError(null);
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      setUploadError("The uploaded file is empty.");
+      return;
+    }
+
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader =
+      firstLine.includes("phone") ||
+      firstLine.includes("mobile") ||
+      firstLine.includes("number") ||
+      firstLine.includes("contact") ||
+      firstLine.includes("name") ||
+      firstLine.includes("custom_id");
+
+    let phoneIdx = 0;
+    let nameIdx = -1;
+    let idIdx = -1;
+    let dataLines = lines;
+
+    if (hasHeader) {
+      const headers = lines[0]
+        .split(/[,\t;|]/)
+        .map((h) => h.trim().toLowerCase().replace(/^["']|["']$/g, ""));
+      phoneIdx = headers.findIndex(
+        (h) => h.includes("phone") || h.includes("mobile") || h.includes("number") || h.includes("contact")
+      );
+      nameIdx = headers.findIndex((h) => h.includes("name") && !h.includes("custom"));
+      idIdx = headers.findIndex((h) => h.includes("id") || h.includes("custom"));
+      if (phoneIdx === -1) phoneIdx = 0;
+      dataLines = lines.slice(1);
+    }
+
+    const parsed: { phone: string; name?: string; customId?: string }[] = [];
+    const seenPhones = new Set<string>();
+
+    for (const line of dataLines) {
+      const cols = line.split(/[,\t;|]/).map((c) => c.trim().replace(/^["']|["']$/g, ""));
+      const rawPhone = cols[phoneIdx] || cols[0];
+      if (!rawPhone) continue;
+
+      const cleaned = rawPhone.replace(/[^\d+]/g, "");
+      if (cleaned.length >= 7) {
+        const cName = nameIdx !== -1 ? cols[nameIdx] : cols[1] && isNaN(Number(cols[1])) ? cols[1] : undefined;
+        const customId = idIdx !== -1 ? cols[idIdx] : undefined;
+
+        if (!seenPhones.has(cleaned)) {
+          seenPhones.add(cleaned);
+          parsed.push({ phone: cleaned, name: cName, customId });
+        }
+      }
+    }
+
+    if (parsed.length === 0) {
+      setUploadError("No valid phone numbers found in file. Ensure phone numbers are provided (e.g. 017XXXXXXXX or 88017XXXXXXXX).");
+      return;
+    }
+
+    setUploadedContacts(parsed);
+    setRecipientCount(parsed.length);
+    setAudienceName(`${filename} (${parsed.length} contacts)`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      parseContactText(content, file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    setUploadedFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      parseContactText(content, file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setUploadedContacts([]);
+    setRecipientCount(0);
+    setAudienceName("CSV Upload Contact List");
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const downloadSampleCsv = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent("phone,name,custom_id\n8801711234567,Rahim Ahmed,USR-101\n8801812345678,Karim Uddin,USR-102\n8801912345679,Farhana Islam,USR-103\n8801612345670,Tanvir Hasan,USR-104\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", csvContent);
+    link.setAttribute("download", "smspro_contacts_sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleLaunchCampaign = async () => {
     setIsSubmitting(true);
@@ -73,12 +197,12 @@ function CreateCampaignForm() {
           destinationUrl,
           trackingFormat,
           trackingLength,
+          contacts: audienceType === "upload" ? uploadedContacts : undefined,
         }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        // Navigate to delivery queue or link generator
         router.push(`/link-generator?campaignId=${data.campaign?._id || ""}`);
       } else {
         alert(data.error || "Failed to create campaign");
@@ -91,7 +215,7 @@ function CreateCampaignForm() {
     }
   };
 
-  const sampleTrackingUrl = `https://go.mybrand.com/${trackingFormat === "numeric" ? "583214" : "A8K72P"}`;
+  const sampleTrackingUrl = `http://localhost:3000/t/${trackingFormat === "numeric" ? "583214" : "A8K72P"}`;
   const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
 
   return (
@@ -108,7 +232,7 @@ function CreateCampaignForm() {
           {isRetargeting && (
             <Badge variant="purple" className="px-3 py-1 text-xs">
               <Sparkles className="w-3.5 h-3.5 mr-1" />
-              Retargeting Mode (77.5% Volume Reduction)
+              Retargeting Mode
             </Badge>
           )}
         </div>
@@ -146,7 +270,10 @@ function CreateCampaignForm() {
                 >
                   {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : s.num}
                 </div>
-                <div className="text-xs font-semibold leading-tight">{s.label}</div>
+                <div className="hidden sm:block">
+                  <div className="text-xs font-semibold leading-tight">{s.label}</div>
+                  <div className="text-[10px] text-slate-400">Step {s.num} of 4</div>
+                </div>
               </div>
             );
           })}
@@ -167,7 +294,7 @@ function CreateCampaignForm() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. September Product Promotion"
+                  placeholder="e.g. Flash Weekend 20% Discount"
                 />
               </div>
 
@@ -179,8 +306,8 @@ function CreateCampaignForm() {
                   className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="8809648910379">8809648910379 (BulkSMSBD Approved)</option>
-                  <option value="MYBRAND">MYBRAND (Alphanumeric Masking)</option>
                   <option value="SMSPRO">SMSPRO</option>
+                  <option value="MYBRAND">MYBRAND</option>
                 </select>
                 <p className="text-[11px] text-slate-400 mt-1">Sender IDs registered with BulkSMSBD gateway.</p>
               </div>
@@ -242,14 +369,31 @@ function CreateCampaignForm() {
           <Card>
             <CardHeader>
               <CardTitle>Step 2: Audience Selection</CardTitle>
-              <CardDescription>Select target contact list or AI-identified lead segment</CardDescription>
+              <CardDescription>Select target contact list, upload spreadsheet, or choose an audience segment</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div
                   onClick={() => {
+                    setAudienceType("upload");
+                    setAudienceName(uploadedContacts.length > 0 ? `${uploadedFile?.name || "Uploaded List"} (${uploadedContacts.length} contacts)` : "CSV Upload Contact List");
+                    setRecipientCount(uploadedContacts.length);
+                  }}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    audienceType === "upload"
+                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <UploadCloud className="w-5 h-5 text-blue-600 mb-2" />
+                  <div className="font-semibold text-xs text-slate-900">Upload CSV / XLSX</div>
+                  <div className="text-[11px] text-slate-500 mt-1">Import phone contacts from file</div>
+                </div>
+
+                <div
+                  onClick={() => {
                     setAudienceType("existing");
-                    setAudienceName("Default Customer Database");
+                    setAudienceName("Saved Database Contacts");
                     setRecipientCount(100);
                   }}
                   className={`p-4 rounded-xl border cursor-pointer transition-all ${
@@ -258,9 +402,9 @@ function CreateCampaignForm() {
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <Users className="w-5 h-5 text-blue-600 mb-2" />
+                  <Users className="w-5 h-5 text-slate-600 mb-2" />
                   <div className="font-semibold text-xs text-slate-900">Existing Audience</div>
-                  <div className="text-[11px] text-slate-500 mt-1">Target all saved contacts in database</div>
+                  <div className="text-[11px] text-slate-500 mt-1">Target saved database contacts</div>
                 </div>
 
                 <div
@@ -279,32 +423,139 @@ function CreateCampaignForm() {
                   <div className="font-semibold text-xs text-slate-900">High-Intent Leads</div>
                   <div className="text-[11px] text-slate-500 mt-1">Multi-click engaged recipients</div>
                 </div>
-
-                <div
-                  onClick={() => {
-                    setAudienceType("upload");
-                    setAudienceName("CSV Upload List");
-                  }}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                    audienceType === "upload"
-                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <UploadCloud className="w-5 h-5 text-slate-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">Upload CSV / XLSX</div>
-                  <div className="text-[11px] text-slate-500 mt-1">Import fresh spreadsheet contacts</div>
-                </div>
               </div>
 
+              {/* CSV Upload Dropzone */}
               {audienceType === "upload" && (
-                <div className="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center space-y-2 bg-slate-50/50">
-                  <UploadCloud className="w-8 h-8 text-slate-400 mx-auto" />
-                  <div className="text-xs font-semibold text-slate-700">Drag & Drop your CSV or XLSX contact file</div>
-                  <p className="text-[11px] text-slate-400">Supported columns: phone, name, custom_id</p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Browse File
-                  </Button>
+                <div className="space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.txt,.xlsx,.xls,.tsv"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+
+                  {uploadedContacts.length === 0 ? (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`p-8 border-2 border-dashed rounded-xl text-center space-y-2 cursor-pointer transition-all ${
+                        isDragging
+                          ? "border-blue-500 bg-blue-50/70"
+                          : "border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50"
+                      }`}
+                    >
+                      <UploadCloud className="w-10 h-10 text-blue-500 mx-auto" />
+                      <div className="text-xs font-semibold text-slate-800">
+                        Click to Browse or Drag & Drop your CSV / XLSX contact file
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Supported formats: .csv, .txt, .xlsx. Columns: <code>phone</code>, <code>name</code>, <code>custom_id</code>
+                      </p>
+                      <div className="pt-2 flex items-center justify-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                        >
+                          Select File
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadSampleCsv();
+                          }}
+                          className="gap-1 text-xs"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Sample CSV Template</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900">{uploadedFile?.name || "contacts.csv"}</div>
+                            <div className="text-[11px] text-emerald-700 font-medium">
+                              ✓ {formatNumber(uploadedContacts.length)} valid contacts successfully loaded
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-xs"
+                          >
+                            Replace File
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleRemoveFile}
+                            className="text-rose-600 hover:text-rose-700"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Contact Preview Table */}
+                      <div className="bg-white border border-emerald-100 rounded-lg overflow-hidden text-xs">
+                        <div className="px-3 py-1.5 bg-slate-50 font-semibold text-slate-600 border-b border-slate-100 text-[11px]">
+                          Preview of Loaded Contacts (Showing first 5 of {uploadedContacts.length}):
+                        </div>
+                        <table className="w-full text-left">
+                          <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/50">
+                            <tr>
+                              <th className="px-3 py-1.5">#</th>
+                              <th className="px-3 py-1.5">Phone</th>
+                              <th className="px-3 py-1.5">Name</th>
+                              <th className="px-3 py-1.5">Custom ID</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                            {uploadedContacts.slice(0, 5).map((c, i) => (
+                              <tr key={i}>
+                                <td className="px-3 py-1.5 font-sans text-slate-400">{i + 1}</td>
+                                <td className="px-3 py-1.5 font-semibold text-slate-800">{c.phone}</td>
+                                <td className="px-3 py-1.5 font-sans text-slate-600">{c.name || "-"}</td>
+                                <td className="px-3 py-1.5 text-slate-500">{c.customId || "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -319,7 +570,10 @@ function CreateCampaignForm() {
               <Button variant="secondary" onClick={() => setStep(1)}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button onClick={() => setStep(3)}>
+              <Button
+                onClick={() => setStep(3)}
+                disabled={audienceType === "upload" && uploadedContacts.length === 0}
+              >
                 Next: Tracking Link Config <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </CardFooter>
@@ -348,24 +602,14 @@ function CreateCampaignForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tracking Domain</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="https://go.mybrand.com/"
-                    className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono"
-                  />
-                </div>
-
-                <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tracking ID Format</label>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setTrackingFormat("numeric")}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
                         trackingFormat === "numeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs"
                           : "bg-white border-slate-200 text-slate-600"
                       }`}
                     >
@@ -374,9 +618,9 @@ function CreateCampaignForm() {
                     <button
                       type="button"
                       onClick={() => setTrackingFormat("alphanumeric")}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
                         trackingFormat === "alphanumeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs"
                           : "bg-white border-slate-200 text-slate-600"
                       }`}
                     >
@@ -384,18 +628,18 @@ function CreateCampaignForm() {
                     </button>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Character Length: {trackingLength}</label>
-                <input
-                  type="range"
-                  min="4"
-                  max="8"
-                  value={trackingLength}
-                  onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
-                  className="w-full"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Character Length: {trackingLength}</label>
+                  <input
+                    type="range"
+                    min="4"
+                    max="8"
+                    value={trackingLength}
+                    onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
+                    className="w-full mt-2"
+                  />
+                </div>
               </div>
 
               {/* Sample Generated Link Preview */}
@@ -414,7 +658,7 @@ function CreateCampaignForm() {
               <Button variant="secondary" onClick={() => setStep(2)}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button onClick={() => setStep(4)}>
+              <Button onClick={() => setStep(4)} disabled={!destinationUrl}>
                 Next: Review & Send <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </CardFooter>
@@ -440,12 +684,19 @@ function CreateCampaignForm() {
                     <strong className="text-slate-900 text-sm">{senderId}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block">Recipients:</span>
-                    <strong className="text-slate-900 text-sm">{formatNumber(recipientCount)} Users</strong>
+                    <span className="text-slate-400 block">Audience / Contacts:</span>
+                    <strong className="text-slate-900 text-sm">{formatNumber(recipientCount)} Recipients</strong>
                   </div>
                   <div>
                     <span className="text-slate-400 block">Gateway Provider:</span>
                     <strong className="text-blue-700 text-sm">BulkSMSBD (Live API)</strong>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="font-semibold text-slate-700">Destination URL:</span>
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-blue-600 font-mono text-xs">
+                    {destinationUrl}
                   </div>
                 </div>
 
