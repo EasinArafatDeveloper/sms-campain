@@ -3,17 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  Zap,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
   Sparkles,
   MousePointerClick,
-  BarChart3,
-  Users,
-  Send,
-  Repeat,
-  Lock,
   Globe,
   Server,
   Check,
@@ -35,6 +29,18 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import {
+  Icon3DRocket,
+  Icon3DLightning,
+  Icon3DFlame,
+  Icon3DShield,
+  Icon3DCursor,
+  Icon3DServer,
+  Icon3DLock,
+  Icon3DUsers,
+  Icon3DChart,
+  Icon3DSparkles,
+} from "@/components/ui/Icons3D";
 import { formatNumber } from "@/lib/utils";
 
 export default function LandingPage() {
@@ -86,11 +92,11 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 dark:bg-slate-950/70 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/85 dark:bg-slate-950/75 border-b border-slate-200/80 dark:border-slate-800/80 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-all duration-300 border border-white/20">
-              <Zap className="w-5 h-5 text-white fill-white/20" />
+              <Icon3DLightning size={24} />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold tracking-tight text-slate-900 dark:text-white text-lg flex items-center gap-1.5">
@@ -119,7 +125,8 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/register">
-              <Button variant="primary" size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/25 text-xs gap-1.5 font-bold text-white border-0">
+              <Button variant="primary" size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/25 text-xs gap-1.5 font-bold text-white border-0 group">
+                <Icon3DLightning size={16} className="group-hover:rotate-12 transition-transform" />
                 <span>Start Free Trial</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
@@ -133,7 +140,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Top Pill Badge */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/80 text-xs text-slate-700 dark:text-slate-300 shadow-lg backdrop-blur-md hover:border-blue-500/50 transition-colors">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/80 text-xs text-slate-700 dark:text-slate-300 shadow-lg backdrop-blur-md hover:border-blue-500/50 transition-colors">
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
@@ -160,17 +167,17 @@ export default function LandingPage() {
               Stop sending blind SMS broadcasts. Automatically inject unique, collision-proof 6-digit cryptographic short links for every recipient, track real-time click telemetry, and retarget hot buyers with 1-click.
             </p>
 
-            {/* CTAs */}
+            {/* CTAs with Rich 3D Icons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
               <Link href="/register" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 shadow-xl shadow-blue-600/30 text-sm font-bold gap-2 text-white border-0">
-                  <Rocket className="w-4 h-4" />
+                <Button size="lg" className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 shadow-xl shadow-blue-600/30 text-sm font-bold gap-3 text-white border-0 group">
+                  <Icon3DRocket size={26} className="group-hover:scale-110 group-hover:rotate-6 transition-transform drop-shadow-md shrink-0" />
                   <span>Start 14-Day Free Trial</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Button>
               </Link>
               <Link href="/login" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto px-6 py-3 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-semibold gap-2 shadow-sm">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto px-6 py-3.5 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-semibold gap-2.5 shadow-sm">
                   <Play className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-blue-600/20" />
                   <span>Explore Live Demo (1-Click)</span>
                 </Button>
@@ -180,69 +187,86 @@ export default function LandingPage() {
             {/* Trust Proof Points */}
             <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 dark:text-slate-400 font-semibold">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">✓</div>
+                <Icon3DShield size={20} />
                 <span>99.4% Delivery Success Rate</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">✓</div>
+                <Icon3DLightning size={20} />
                 <span>Zero Fake Bot Clicks Filter</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">✓</div>
+                <Icon3DServer size={20} />
                 <span>Bring Your Own Gateway (BYOG)</span>
               </div>
             </div>
           </div>
 
-          {/* Hero Visual Mockup: Dynamic Phone Simulator + Live Telemetry Feed */}
+          {/* Hero Visual Mockup: Dynamic Phone Simulator (Theme-Adaptive!) + Live Telemetry Feed */}
           <div className="mt-14 max-w-5xl mx-auto rounded-3xl p-1.5 bg-gradient-to-b from-blue-500/30 via-indigo-500/20 to-slate-200 dark:from-slate-700/60 dark:via-slate-800/30 dark:to-slate-900/10 shadow-2xl backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50">
-            <div className="bg-white/95 dark:bg-slate-900/90 rounded-[22px] p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center shadow-lg">
+            <div className="bg-white/95 dark:bg-slate-900/90 rounded-[22px] p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center shadow-lg transition-colors duration-300">
               
-              {/* Left Column: Interactive Phone Simulation Preview */}
+              {/* Left Column: Interactive Phone Simulation Preview (Theme-Adaptive: Silver Titanium in Light / Stealth Obsidian in Dark) */}
               <div className="lg:col-span-5 flex justify-center">
-                <div className="w-[285px] bg-slate-950 rounded-[36px] p-3.5 border-4 border-slate-800 shadow-2xl relative text-white">
-                  {/* Phone Speaker Notch */}
-                  <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 bg-slate-900 rounded-full" />
-                  </div>
+                <div className="w-[290px] bg-gradient-to-b from-slate-200 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 rounded-[42px] p-3.5 border-[5px] border-slate-300 dark:border-slate-800 shadow-2xl relative text-slate-900 dark:text-white transition-all duration-300">
+                  
+                  {/* Phone Screen Inset Container */}
+                  <div className="bg-white dark:bg-slate-950 rounded-[32px] p-3 border border-slate-200/90 dark:border-slate-800/80 shadow-inner">
+                    {/* Dynamic Island / Speaker Notch */}
+                    <div className="w-24 h-4 bg-slate-900 rounded-full mx-auto mb-2.5 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-slate-800 border border-slate-700 mr-2" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500/60" />
+                    </div>
 
-                  {/* SMS Header */}
-                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5 mb-3 px-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                        88
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center px-1 pb-2 text-[9px] font-bold text-slate-500 dark:text-slate-400 font-mono border-b border-slate-100 dark:border-slate-800/60">
+                      <span>9:41 AM</span>
+                      <div className="flex items-center gap-1">
+                        <span>5G</span>
+                        <span className="w-3.5 h-2 rounded-[2px] border border-slate-400 dark:border-slate-500 inline-block relative">
+                          <span className="absolute inset-0.5 bg-emerald-500 rounded-[1px]" />
+                        </span>
                       </div>
-                      <div>
-                        <div className="text-[11px] font-bold text-slate-200">8809648910379</div>
-                        <div className="text-[9px] text-emerald-400 flex items-center gap-1 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Sender
+                    </div>
+
+                    {/* SMS Header */}
+                    <div className="flex items-center justify-between py-2 mb-2 px-0.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                          88
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100">8809648910379</div>
+                          <div className="text-[9px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Sender
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-mono">1:48 AM</span>
-                  </div>
-
-                  {/* SMS Message Bubble */}
-                  <div className="space-y-3">
-                    <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-2xl text-[11px] text-slate-200 space-y-2 shadow-inner">
-                      <p>
-                        Special offer is live! Get 20% discount today. Click here:
-                      </p>
-                      <div className="p-2 rounded-xl bg-blue-950/70 border border-blue-800/50 text-blue-300 font-mono text-[10px] break-all font-bold flex items-center justify-between">
-                        <span>https://sms-campain.vercel.app/t/646842</span>
-                        <MousePointerClick className="w-3.5 h-3.5 text-blue-400 animate-bounce shrink-0" />
-                      </div>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">1:48 AM</span>
                     </div>
 
-                    {/* Attribution Tag Pill */}
-                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-800/40 text-[10px] text-emerald-300 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        <span className="font-bold">Hot Buyer Intent</span>
+                    {/* SMS Message Bubble */}
+                    <div className="space-y-3">
+                      <div className="p-3 bg-slate-100/90 dark:bg-slate-900/95 border border-slate-200/90 dark:border-slate-800 rounded-2xl text-[11px] text-slate-800 dark:text-slate-200 space-y-2 shadow-xs transition-colors duration-300">
+                        <p className="leading-relaxed">
+                          Special offer is live! Get 20% discount today. Click here:
+                        </p>
+                        <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-300 font-mono text-[10px] break-all font-bold flex items-center justify-between">
+                          <span>https://sms-campain.vercel.app/t/646842</span>
+                          <Icon3DCursor size={18} className="shrink-0 animate-bounce" />
+                        </div>
                       </div>
-                      <span className="font-mono text-white text-[9px] bg-emerald-800/60 px-2 py-0.5 rounded-md font-bold">3 Clicks</span>
+
+                      {/* Attribution Tag Pill */}
+                      <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:to-slate-900 border border-emerald-200 dark:border-emerald-800/40 text-[10px] text-emerald-800 dark:text-emerald-300 flex items-center justify-between shadow-xs transition-colors duration-300">
+                        <div className="flex items-center gap-1.5">
+                          <Icon3DFlame size={18} />
+                          <span className="font-bold">Hot Buyer Intent</span>
+                        </div>
+                        <span className="font-mono text-white text-[9px] bg-emerald-600 dark:bg-emerald-700 px-2 py-0.5 rounded-md font-bold shadow-xs">3 Clicks</span>
+                      </div>
                     </div>
                   </div>
+
                 </div>
               </div>
 
@@ -339,8 +363,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Feature 1: Cryptographic Short Links */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                <Lock className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DLock size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Cryptographic Nano-Short URLs</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -350,8 +374,8 @@ export default function LandingPage() {
 
             {/* Feature 2: Bot & Preview Filtering */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DShield size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Smart Bot & Preview Filtering</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -361,8 +385,8 @@ export default function LandingPage() {
 
             {/* Feature 3: High-Intent Lead Scoring */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
-                <Flame className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DFlame size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Smart Buyer Intent Scoring</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -372,8 +396,8 @@ export default function LandingPage() {
 
             {/* Feature 4: Bring Your Own Gateway (BYOG) */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform">
-                <Server className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DServer size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Direct SMS Gateway Control</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -383,8 +407,8 @@ export default function LandingPage() {
 
             {/* Feature 5: Bulk Audience Manager & CSV Upload */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
-                <Users className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DUsers size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Instant CSV & Audience Drag-Drop</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -394,8 +418,8 @@ export default function LandingPage() {
 
             {/* Feature 6: Enterprise Rate Limiting & Queue */}
             <Card className="bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 p-6 hover:border-blue-500/50 transition-all shadow-md group hover:shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform">
-                <Zap className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                <Icon3DLightning size={32} />
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Enterprise Delivery Queue</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -528,28 +552,28 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Calculated Results with 3D cards */}
+              {/* Calculated Results with 3D Icons */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-slate-900 border border-blue-200 dark:border-blue-800/40 text-center shadow-sm">
-                  <MousePointerClick className="w-5 h-5 text-blue-600 dark:text-blue-400 mx-auto mb-1.5" />
+                  <Icon3DCursor size={28} className="mx-auto mb-1.5" />
                   <div className="text-xl font-black text-slate-900 dark:text-white font-mono">{formatNumber(estimatedTotalClicks)}</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-0.5 font-medium">Estimated Clicks</div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-slate-900 border border-purple-200 dark:border-purple-800/40 text-center shadow-sm">
-                  <Flame className="w-5 h-5 text-purple-600 dark:text-purple-400 mx-auto mb-1.5" />
+                  <Icon3DFlame size={28} className="mx-auto mb-1.5" />
                   <div className="text-xl font-black text-purple-700 dark:text-purple-300 font-mono">{formatNumber(estimatedHighIntentLeads)}</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-0.5 font-medium">Hot Buyer Leads</div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-200 dark:border-emerald-800/40 text-center shadow-sm">
-                  <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1.5" />
+                  <Icon3DLightning size={28} className="mx-auto mb-1.5" />
                   <div className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono">৳{formatNumber(estimatedRevenue)}</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-0.5 font-medium">Est. Retargeted Revenue</div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-slate-900 border border-amber-200 dark:border-amber-800/40 text-center shadow-sm">
-                  <Rocket className="w-5 h-5 text-amber-600 dark:text-amber-400 mx-auto mb-1.5" />
+                  <Icon3DRocket size={28} className="mx-auto mb-1.5" />
                   <div className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">{roiMultiplier}x</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-0.5 font-medium">Projected Campaign ROI</div>
                 </div>
@@ -568,28 +592,20 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2.5 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Server className="w-4 h-4" />
-              </div>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
+              <Icon3DServer size={24} />
               <span>BulkSMSBD (Live API)</span>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2.5 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <Globe className="w-4 h-4" />
-              </div>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
+              <Icon3DShield size={24} />
               <span>Greenweb BD</span>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2.5 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <MessageSquare className="w-4 h-4" />
-              </div>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
+              <Icon3DUsers size={24} />
               <span>Twilio Global SMS</span>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2.5 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Cpu className="w-4 h-4" />
-              </div>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
+              <Icon3DLightning size={24} />
               <span>Custom REST API</span>
             </div>
           </div>
@@ -788,7 +804,8 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <Link href="/register" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-sm shadow-xl gap-2 border-0">
+                <Button size="lg" className="w-full sm:w-auto px-8 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-black text-sm shadow-xl gap-2.5 border-0 group">
+                  <Icon3DRocket size={22} className="group-hover:scale-110 transition-transform" />
                   <span>Start Your 14-Day Free Trial</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -808,7 +825,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-              <Zap className="w-4 h-4" />
+              <Icon3DLightning size={16} />
             </div>
             <span className="font-bold text-slate-900 dark:text-white">SMSPro SaaS</span>
             <span className="text-slate-400 dark:text-slate-500">© 2026 SMSPro Inc. All rights reserved.</span>

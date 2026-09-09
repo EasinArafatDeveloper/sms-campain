@@ -5,17 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
-  Zap,
   Lock,
   Mail,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  Sparkles,
-  MousePointerClick,
-  Flame,
 } from "lucide-react";
+import {
+  Icon3DLightning,
+  Icon3DCursor,
+  Icon3DFlame,
+} from "@/components/ui/Icons3D";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,17 +57,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-300">
       {/* Left Brand Panel (Desktop) */}
-      <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-12 flex-col justify-between border-r border-slate-800 relative overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-12 flex-col justify-between border-r border-slate-800 relative overflow-hidden text-white">
         {/* Glow Effects */}
         <div className="absolute -top-20 -left-20 w-80 h-80 bg-blue-600/20 blur-[100px] rounded-full pointer-events-none" />
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-purple-600/20 blur-[100px] rounded-full pointer-events-none" />
 
         <div className="relative z-10 space-y-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <Zap className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 border border-white/20">
+              <Icon3DLightning size={22} />
             </div>
             <span className="font-extrabold tracking-tight text-white text-lg">SMSPro SaaS</span>
           </Link>
@@ -83,11 +85,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Feature Points Box */}
+        {/* Feature Points Box with 3D Icons */}
         <div className="relative z-10 space-y-3 pt-6">
           <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-md flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
-              <MousePointerClick className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+              <Icon3DCursor size={22} />
             </div>
             <div className="text-xs">
               <div className="font-bold text-white">Cryptographic 6-Digit Links</div>
@@ -96,8 +98,8 @@ export default function LoginPage() {
           </div>
 
           <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-md flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-              <Flame className="w-4 h-4 text-emerald-400" />
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+              <Icon3DFlame size={22} />
             </div>
             <div className="text-xs">
               <div className="font-bold text-white">Hot Buyer Intent Scoring</div>
@@ -113,50 +115,54 @@ export default function LoginPage() {
       </div>
 
       {/* Right Login Form Container */}
-      <div className="lg:col-span-7 flex flex-col justify-center items-center p-6 sm:p-12">
+      <div className="lg:col-span-7 flex flex-col justify-center items-center p-6 sm:p-12 relative">
+        <div className="absolute top-6 right-6">
+          <ThemeToggle />
+        </div>
+
         <div className="max-w-md w-full space-y-6">
           {/* Header */}
           <div className="space-y-1 text-center sm:text-left">
-            <h1 className="text-2xl font-bold tracking-tight text-white">Sign In to Your Workspace</h1>
-            <p className="text-xs text-slate-400">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Sign In to Your Workspace</h1>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Enter your credentials below to access your campaigns and analytics.
             </p>
           </div>
 
-          <Card className="bg-slate-900/80 border-slate-800 shadow-2xl backdrop-blur-xl">
+          <Card className="bg-white/95 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 shadow-2xl backdrop-blur-xl">
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-6 text-xs">
                 {error && (
-                  <div className="p-3 bg-rose-950/60 border border-rose-800/60 rounded-xl text-rose-300 font-medium">
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-700 dark:text-rose-300 font-medium">
                     {error}
                   </div>
                 )}
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1.5">Email Address</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="name@company.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1.5">Password</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="••••••••"
                     />
                   </div>
@@ -165,16 +171,16 @@ export default function LoginPage() {
                 {/* 1-Click Demo Helper */}
                 <div
                   onClick={handleQuickDemo}
-                  className="p-3 bg-blue-950/40 hover:bg-blue-950/60 rounded-xl border border-blue-800/40 cursor-pointer transition-colors"
+                  className="p-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100/70 dark:hover:bg-blue-950/60 rounded-xl border border-blue-200 dark:border-blue-800/40 cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center justify-between text-blue-300 font-semibold">
+                  <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 font-semibold">
                     <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-blue-400" />
+                      <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       1-Click Demo Account Preset
                     </span>
-                    <span className="text-[10px] text-blue-400 underline">Apply</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 underline font-bold">Apply</span>
                   </div>
-                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                  <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-1 font-mono">
                     omer@smspro.io / password123 (Owner)
                   </div>
                 </div>
@@ -185,16 +191,16 @@ export default function LoginPage() {
                   type="submit"
                   variant="primary"
                   size="lg"
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 text-xs py-2.5 shadow-lg shadow-blue-600/25"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 text-xs py-2.5 shadow-lg shadow-blue-600/25 border-0"
                   isLoading={isLoading}
                 >
                   <span>Sign In to SMSPro</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
 
-                <div className="text-center text-slate-400 text-xs">
+                <div className="text-center text-slate-500 dark:text-slate-400 text-xs">
                   Don't have an account?{" "}
-                  <Link href="/register" className="text-blue-400 font-bold hover:underline">
+                  <Link href="/register" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                     Create Free Workspace
                   </Link>
                 </div>
