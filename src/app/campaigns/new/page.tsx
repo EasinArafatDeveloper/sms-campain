@@ -58,6 +58,7 @@ function CreateCampaignForm() {
   const [destinationUrl, setDestinationUrl] = useState("https://mybrand.com/offer");
   const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("alphanumeric");
   const [trackingLength, setTrackingLength] = useState(6);
+  const [urlPrefix, setUrlPrefix] = useState("t");
 
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -197,6 +198,7 @@ function CreateCampaignForm() {
           destinationUrl,
           trackingFormat,
           trackingLength,
+          urlPrefix: (urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t",
           contacts: audienceType === "upload" ? uploadedContacts : undefined,
         }),
       });
@@ -216,6 +218,7 @@ function CreateCampaignForm() {
   };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const activePrefix = (urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t";
   const sampleTrackingId = React.useMemo(() => {
     if (trackingFormat === "numeric") {
       const digits = "583214976023";
@@ -225,7 +228,7 @@ function CreateCampaignForm() {
       return chars.slice(0, Math.max(4, Math.min(10, trackingLength)));
     }
   }, [trackingFormat, trackingLength]);
-  const sampleTrackingUrl = `${origin}/t/${sampleTrackingId}`;
+  const sampleTrackingUrl = `${origin}/${activePrefix}/${sampleTrackingId}`;
   const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
 
   return (
@@ -608,6 +611,50 @@ function CreateCampaignForm() {
                   placeholder="https://mybrand.com/special-offer"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">Users clicking the SMS short link will redirect here.</p>
+              </div>
+
+              {/* Custom Path Prefix (e.g. domain.com/eid/A8K7 or domain.com/t/A8K7) */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Custom Link Path Prefix (কাস্টম লিংক প্রিফিক্স)
+                  </label>
+                  <span className="text-[11px] text-blue-600 font-mono font-medium">
+                    /{activePrefix}/[code]
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-mono text-xs">
+                    {origin.replace(/^https?:\/\//, "")}/
+                  </span>
+                  <input
+                    type="text"
+                    value={urlPrefix}
+                    onChange={(e) => {
+                      const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "");
+                      setUrlPrefix(clean);
+                    }}
+                    placeholder="e.g. eid, offer, deal, t"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold text-blue-700 border border-slate-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[11px] text-slate-400">Quick presets:</span>
+                  {["t", "eid", "offer", "deal", "promo", "vip", "sale"].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setUrlPrefix(preset)}
+                      className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all cursor-pointer ${
+                        activePrefix === preset
+                          ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      /{preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

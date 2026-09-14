@@ -22,6 +22,7 @@ export interface CreateCampaignDTO {
   destinationUrl: string;
   trackingFormat?: "numeric" | "alphanumeric";
   trackingLength?: number;
+  urlPrefix?: string;
   scheduledAt?: string;
   contacts?: { phone: string; name?: string; customId?: string }[];
 }
@@ -40,8 +41,9 @@ export class CampaignService {
     const orgObjId = new mongoose.Types.ObjectId(organizationId);
     const userObjId = new mongoose.Types.ObjectId(userId);
 
-    const format = data.trackingFormat || "numeric";
+    const format = data.trackingFormat || "alphanumeric";
     const length = data.trackingLength || 6;
+    const urlPrefix = (data.urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t";
     const destUrl = data.destinationUrl.trim();
 
     // 1. Create Campaign Document
@@ -58,6 +60,7 @@ export class CampaignService {
         destinationUrl: destUrl,
         format,
         length,
+        urlPrefix,
       },
       scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
       createdBy: userObjId,
@@ -127,18 +130,17 @@ export class CampaignService {
       let resolvedBase = options?.baseUrl || process.env.TRACKING_BASE_URL;
       if (!resolvedBase) {
         if (process.env.NEXT_PUBLIC_APP_URL) {
-          resolvedBase = `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}/t`;
+          resolvedBase = `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "")}`;
         } else if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-          resolvedBase = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/t`;
+          resolvedBase = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
         } else if (process.env.VERCEL_URL) {
-          resolvedBase = `https://${process.env.VERCEL_URL}/t`;
+          resolvedBase = `https://${process.env.VERCEL_URL}`;
         } else {
-          resolvedBase = "http://localhost:3000/t";
+          resolvedBase = "http://localhost:3000";
         }
       } else {
-        if (!resolvedBase.endsWith("/t") && !resolvedBase.endsWith("/t/")) {
-          resolvedBase = `${resolvedBase.replace(/\/+$/, "")}/t`;
-        }
+        // Strip trailing /t if preset so we cleanly append custom urlPrefix
+        resolvedBase = resolvedBase.replace(/\/+t\/?$/, "").replace(/\/+$/, "");
       }
       const appBaseUrl = resolvedBase.replace(/\/+$/, "");
 
@@ -149,7 +151,7 @@ export class CampaignService {
       for (let i = 0; i < totalRecipients; i++) {
         const item = recipientsList[i];
         const trackingId = trackingIds[i];
-        const uniqueUrl = `${appBaseUrl}/${trackingId}`;
+        const uniqueUrl = `${appBaseUrl}/${urlPrefix}/${trackingId}`;
 
         const trackingLinkId = new mongoose.Types.ObjectId();
 

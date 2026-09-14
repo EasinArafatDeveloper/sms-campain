@@ -14,6 +14,7 @@ export interface ICampaignDocument extends Document {
     destinationUrl: string;
     format: TrackingFormat;
     length: number;
+    urlPrefix?: string;
   };
   statistics: {
     totalRecipients: number;
@@ -54,8 +55,9 @@ const CampaignSchema = new Schema<ICampaignDocument>(
     recipientCount: { type: Number, default: 0 },
     trackingConfig: {
       destinationUrl: { type: String, default: "https://mybrand.com/offer" },
-      format: { type: String, enum: ["numeric", "alphanumeric"], default: "numeric" },
+      format: { type: String, enum: ["numeric", "alphanumeric"], default: "alphanumeric" },
       length: { type: Number, default: 6 },
+      urlPrefix: { type: String, default: "t" },
     },
     statistics: {
       totalRecipients: { type: Number, default: 0 },

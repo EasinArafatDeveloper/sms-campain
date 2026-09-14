@@ -65,6 +65,7 @@ export interface ICampaign {
     destinationUrl: string;
     format: TrackingFormat;
     length: number;
+    urlPrefix?: string;
   };
   statistics: {
     totalRecipients: number;
