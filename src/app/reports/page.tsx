@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -22,6 +23,7 @@ import {
   Loader2,
   X,
   FileSpreadsheet,
+  Eye,
 } from "lucide-react";
 import { formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 
@@ -252,7 +254,10 @@ export default function ReportsPage() {
                   data.campaigns.map((c: any) => (
                     <tr key={c._id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4 font-semibold text-slate-900">
-                        <div>{c.name}</div>
+                        <Link href={`/campaigns/${c._id}`} className="hover:text-blue-600 transition-colors flex items-center gap-1.5 group">
+                          <span>{c.name}</span>
+                          <Eye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                        </Link>
                         <div className="text-[10px] text-slate-400">Sender ID: <span className="font-mono text-slate-600">{c.senderId}</span></div>
                       </td>
                       <td className="px-4 py-4 text-slate-500">{formatDate(c.date)}</td>
@@ -271,6 +276,12 @@ export default function ReportsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <Link href={`/campaigns/${c._id}`}>
+                            <Button variant="primary" size="sm" className="gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-2xs" title="View Full Campaign Live Report & Numbers">
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Report</span>
+                            </Button>
+                          </Link>
                           <a
                             href={`/api/exports/campaigns/${c._id}`}
                             download

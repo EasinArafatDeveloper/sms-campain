@@ -303,6 +303,143 @@ export class CampaignService {
   }
 
   /**
+   * Get comprehensive campaign details along with per-recipient delivery, tracking code,
+   * and click attribution history with search, filtering, and pagination.
+   */
+  static async getCampaignDetailedReport(
+    organizationId: string,
+    campaignId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      status?: string;
+      filter?: "all" | "clicked" | "high_intent" | "delivered" | "failed";
+    } = {}
+  ) {
+    await connectToDatabase();
+    const orgObjId = new mongoose.Types.ObjectId(organizationId);
+    const campObjId = new mongoose.Types.ObjectId(campaignId);
+
+    const campaign = await CampaignModel.findOne({
+      _id: campObjId,
+      organizationId: orgObjId,
+    }).lean();
+
+    if (!campaign) {
+      return null;
+    }
+
+    // Fetch all recipients, tracking links, and delivery jobs
+    const [recipients, links, jobs] = await Promise.all([
+      CampaignRecipientModel.find({ campaignId: campObjId, organizationId: orgObjId })
+        .populate("recipientId", "phone name customId")
+        .lean(),
+      TrackingLinkModel.find({ campaignId: campObjId, organizationId: orgObjId }).lean(),
+      DeliveryJobModel.find({ campaignId: campObjId, organizationId: orgObjId }).lean(),
+    ]);
+
+    // Build lookup maps
+    const linkMap = new Map<string, any>();
+    for (const l of links) {
+      linkMap.set(l.recipientId.toString(), l);
+      linkMap.set(l.trackingId, l);
+    }
+
+    const jobMap = new Map<string, any>();
+    for (const j of jobs) {
+      jobMap.set(j.recipientId.toString(), j);
+    }
+
+    let combined = recipients.map((r: any) => {
+      const recipId = r.recipientId?._id?.toString() || r.recipientId?.toString() || "";
+      const phone = r.recipientId?.phone || r.phone || "";
+      const name = r.recipientId?.name || "Customer";
+      const customId = r.recipientId?.customId || "";
+
+      const link = linkMap.get(recipId) || linkMap.get(r.trackingId) || {};
+      const job = jobMap.get(recipId) || {};
+
+      const clicks = link.clickCount || r.clickCount || 0;
+      const status = job.status || r.status || "queued";
+
+      return {
+        _id: r._id,
+        recipientId: recipId,
+        phone,
+        name,
+        customId,
+        status,
+        sentAt: job.sentAt || null,
+        deliveredAt: job.deliveredAt || null,
+        trackingId: link.trackingId || r.trackingId || "",
+        uniqueUrl: link.uniqueUrl || "",
+        destinationUrl: link.destinationUrl || campaign.trackingConfig?.destinationUrl || "",
+        clickCount: clicks,
+        firstClickedAt: link.firstClickedAt || null,
+        lastClickedAt: link.lastClickedAt || null,
+        isHighIntent: clicks >= 2,
+        isClicked: clicks > 0,
+        errorMessage: job.errorMessage || null,
+      };
+    });
+
+    // Summary calculations on all records
+    const allSummary = {
+      totalRecipients: campaign.recipientCount || combined.length,
+      delivered: combined.filter((i) => i.status === "delivered").length,
+      sent: combined.filter((i) => ["sent", "delivered"].includes(i.status)).length,
+      failed: combined.filter((i) => i.status === "failed").length,
+      queued: combined.filter((i) => ["queued", "processing"].includes(i.status)).length,
+      totalClicks: combined.reduce((acc, curr) => acc + curr.clickCount, 0),
+      uniqueClickers: combined.filter((i) => i.clickCount > 0).length,
+      highIntentLeads: combined.filter((i) => i.clickCount >= 2).length,
+    };
+
+    // Apply filtering
+    if (options.search) {
+      const q = options.search.toLowerCase().trim();
+      combined = combined.filter(
+        (item) =>
+          item.phone.toLowerCase().includes(q) ||
+          item.name.toLowerCase().includes(q) ||
+          item.trackingId.toLowerCase().includes(q)
+      );
+    }
+
+    if (options.status && options.status !== "all") {
+      combined = combined.filter((item) => item.status === options.status);
+    }
+
+    if (options.filter === "clicked") {
+      combined = combined.filter((item) => item.clickCount > 0);
+    } else if (options.filter === "high_intent") {
+      combined = combined.filter((item) => item.clickCount >= 2);
+    } else if (options.filter === "delivered") {
+      combined = combined.filter((item) => item.status === "delivered");
+    } else if (options.filter === "failed") {
+      combined = combined.filter((item) => item.status === "failed");
+    }
+
+    const total = combined.length;
+    const page = Math.max(1, options.page || 1);
+    const limit = Math.min(200, Math.max(1, options.limit || 50));
+    const skip = (page - 1) * limit;
+
+    const pagedRecipients = combined.slice(skip, skip + limit);
+
+    return {
+      campaign,
+      recipients: pagedRecipients,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      summary: allSummary,
+    };
+  }
+
+  /**
    * Permanently deletes a campaign and performs full cascade deletion of all
    * associated recipients, queue delivery jobs, unique tracking links, and click events.
    */

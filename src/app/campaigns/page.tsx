@@ -18,6 +18,7 @@ import {
   Loader2,
   X,
   FileSpreadsheet,
+  Eye,
 } from "lucide-react";
 import { formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 import { TablePageSkeleton } from "@/components/ui/Skeleton";
@@ -204,7 +205,10 @@ export default function CampaignsListPage() {
                     return (
                       <tr key={camp._id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-6 py-4 font-medium text-slate-900">
-                          <div className="text-sm font-semibold">{camp.name}</div>
+                          <Link href={`/campaigns/${camp._id}`} className="text-sm font-semibold hover:text-blue-600 transition-colors flex items-center gap-1.5 group">
+                            <span>{camp.name}</span>
+                            <Eye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                          </Link>
                           <div className="text-[11px] text-slate-400 mt-0.5">
                             Sender: <span className="font-mono text-slate-600">{camp.senderId}</span> • Created {formatDate(camp.createdAt)}
                           </div>
@@ -227,10 +231,16 @@ export default function CampaignsListPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <Link href={`/campaigns/${camp._id}`}>
+                              <Button variant="primary" size="sm" className="gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-2xs" title="View Full Campaign Live Report & Numbers">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Report</span>
+                              </Button>
+                            </Link>
                             <Link href={`/click-analytics?campaignId=${camp._id}`}>
                               <Button variant="outline" size="sm" className="gap-1 text-xs" title="View Click Analytics">
                                 <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-                                <span className="hidden md:inline">Analytics</span>
+                                <span className="hidden lg:inline">Analytics</span>
                               </Button>
                             </Link>
                             <a
@@ -240,7 +250,7 @@ export default function CampaignsListPage() {
                             >
                               <Button variant="secondary" size="sm" className="gap-1 text-xs text-emerald-700 hover:text-emerald-800">
                                 <Download className="w-3.5 h-3.5" />
-                                <span className="hidden md:inline">Report</span>
+                                <span className="hidden lg:inline">CSV</span>
                               </Button>
                             </a>
                             <Button
