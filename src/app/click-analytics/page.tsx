@@ -24,6 +24,7 @@ import {
   ChevronDown,
   X,
   FileSpreadsheet,
+  ShieldCheck,
 } from "lucide-react";
 import { formatNumber, formatPercentage, formatDateTime } from "@/lib/utils";
 
@@ -224,15 +225,16 @@ function ClickAnalyticsContent() {
           </div>
         )}
 
-        {/* 7 KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* 8 KPI Cards with Real Human & Bot Defense */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
           <StatCard title="SMS Sent" value={formatNumber(metrics.smsSent)} icon={Send} iconBg="bg-slate-100" iconColor="text-slate-700" />
           <StatCard title="Delivered" value={formatNumber(metrics.delivered)} icon={CheckCircle2} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <StatCard title="Total Clicks" value={formatNumber(metrics.totalClicks)} icon={MousePointerClick} iconBg="bg-purple-50" iconColor="text-purple-600" />
+          <StatCard title="Human Clicks" value={formatNumber(metrics.totalClicks)} icon={MousePointerClick} iconBg="bg-purple-50" iconColor="text-purple-600" />
           <StatCard title="Unique Clickers" value={formatNumber(metrics.uniqueClickers)} icon={Users} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
-          <StatCard title="Click Rate" value={`${metrics.clickRate}%`} icon={Percent} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+          <StatCard title="Real Click Rate" value={`${metrics.clickRate}%`} icon={Percent} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
           <StatCard title="Repeat Clickers" value={formatNumber(metrics.repeatClickers)} icon={Repeat} iconBg="bg-purple-50" iconColor="text-purple-700" />
           <StatCard title="High Intent" value={formatNumber(metrics.highIntentLeads)} icon={Sparkles} iconBg="bg-emerald-50" iconColor="text-emerald-700" />
+          <StatCard title="Bots Filtered" value={formatNumber(metrics.botScansFiltered || 0)} icon={ShieldCheck} iconBg="bg-slate-100" iconColor="text-emerald-600" />
         </div>
 
         {/* Funnel + Engagement Trend */}

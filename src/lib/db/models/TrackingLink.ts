@@ -9,6 +9,7 @@ export interface ITrackingLinkDocument extends Document {
   uniqueUrl: string;
   status: "active" | "expired" | "disabled";
   clickCount: number;
+  botClickCount: number;
   firstClickedAt?: Date;
   lastClickedAt?: Date;
   createdAt: Date;
@@ -25,6 +26,7 @@ const TrackingLinkSchema = new Schema<ITrackingLinkDocument>(
     uniqueUrl: { type: String, required: true },
     status: { type: String, enum: ["active", "expired", "disabled"], default: "active", index: true },
     clickCount: { type: Number, default: 0 },
+    botClickCount: { type: Number, default: 0 },
     firstClickedAt: { type: Date },
     lastClickedAt: { type: Date },
   },

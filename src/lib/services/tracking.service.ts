@@ -82,42 +82,178 @@ export class TrackingService {
   }
 
   /**
-   * Detects automated link preview crawlers, bots, or browser prefetch requests.
+   * Deeply inspects User-Agent, headers, and prefetch flags to detect automated bots,
+   * SMS preview crawlers (Google/Apple Messages, Truecaller, WhatsApp, etc.), and network scanners.
    */
-  static isBotOrPreview(userAgent?: string, purpose?: string): boolean {
-    if (purpose && (purpose.includes("prefetch") || purpose.includes("preview"))) {
-      return true;
+  static detectBot(metadata?: {
+    userAgent?: string;
+    purpose?: string;
+    secPurpose?: string;
+    secFetchDest?: string;
+    secFetchMode?: string;
+    accept?: string;
+    acceptLanguage?: string;
+  }): { isBot: boolean; reason: string } {
+    if (!metadata) return { isBot: false, reason: "none" };
+
+    const purpose = (metadata.purpose || metadata.secPurpose || "").toLowerCase();
+    if (purpose.includes("prefetch") || purpose.includes("preview")) {
+      return { isBot: true, reason: `prefetch_header (${purpose})` };
     }
-    if (!userAgent) return false;
-    const ua = userAgent.toLowerCase();
-    const botKeywords = [
-      "bot",
-      "spider",
-      "crawler",
-      "preview",
-      "google-page-preview",
-      "google-read-aloud",
-      "googlebot",
-      "facebookexternalhit",
-      "whatsapp",
-      "telegrambot",
-      "twitterbot",
-      "slackbot",
-      "applebot",
-      "discordbot",
-      "bingbot",
-      "duckduckbot",
-      "yandexbot",
-      "skypeuripreview",
-      "viber",
-      "lighthouse",
-      "headlesschrome",
+
+    if (metadata.secFetchDest === "empty" && metadata.secFetchMode === "no-cors") {
+      return { isBot: true, reason: "background_headless_fetch" };
+    }
+
+    const ua = (metadata.userAgent || "").toLowerCase();
+    if (!ua) {
+      return { isBot: true, reason: "missing_user_agent" };
+    }
+
+    const botSignatures: Array<{ pattern: string; name: string }> = [
+      { pattern: "truecaller", name: "Truecaller SMS Scanner" },
+      { pattern: "dalvik", name: "Dalvik Android Daemon" },
+      { pattern: "android-sms", name: "Android SMS Link Preview" },
+      { pattern: "samsungservice", name: "Samsung Anti-Spam Scanner" },
+      { pattern: "okhttp", name: "OkHttp Automated Client" },
+      { pattern: "apache-httpclient", name: "Apache HttpClient" },
+      { pattern: "cfnetwork", name: "Apple CFNetwork Daemon" },
+      { pattern: "google-page-preview", name: "Google Page Preview" },
+      { pattern: "google-read-aloud", name: "Google Read Aloud" },
+      { pattern: "googlebot", name: "Googlebot" },
+      { pattern: "applebot", name: "Applebot / iMessage Preview" },
+      { pattern: "facebookexternalhit", name: "Facebook / Meta Preview Bot" },
+      { pattern: "facebot", name: "Facebot" },
+      { pattern: "whatsapp", name: "WhatsApp Link Preview" },
+      { pattern: "telegrambot", name: "Telegram Bot" },
+      { pattern: "twitterbot", name: "Twitterbot" },
+      { pattern: "slackbot", name: "Slackbot" },
+      { pattern: "skypeuripreview", name: "Skype URI Preview" },
+      { pattern: "viber", name: "Viber Link Preview" },
+      { pattern: "discordbot", name: "Discordbot" },
+      { pattern: "bingbot", name: "Bingbot" },
+      { pattern: "duckduckbot", name: "DuckDuckBot" },
+      { pattern: "yandex", name: "Yandex Bot" },
+      { pattern: "bytespider", name: "ByteSpider" },
+      { pattern: "petalbot", name: "PetalBot" },
+      { pattern: "headlesschrome", name: "Headless Chrome" },
+      { pattern: "phantomjs", name: "PhantomJS" },
+      { pattern: "lighthouse", name: "Lighthouse Audit" },
+      { pattern: "curl", name: "cURL" },
+      { pattern: "python", name: "Python Requests/Scraper" },
+      { pattern: "go-http-client", name: "Go HTTP Client" },
+      { pattern: "node-fetch", name: "Node Fetch" },
+      { pattern: "postman", name: "Postman" },
+      { pattern: "wget", name: "Wget" },
+      { pattern: "winhttp", name: "WinHTTP" },
+      { pattern: "scrapy", name: "Scrapy Crawler" },
+      { pattern: "axios", name: "Axios Script" },
+      { pattern: "semrush", name: "Semrush Bot" },
+      { pattern: "ahrefs", name: "Ahrefs Bot" },
     ];
-    return botKeywords.some((keyword) => ua.includes(keyword));
+
+    for (const sig of botSignatures) {
+      if (ua.includes(sig.pattern)) {
+        return { isBot: true, reason: sig.name };
+      }
+    }
+
+    // Check for general bot/spider keywords in user agent
+    if (ua.includes("bot") || ua.includes("spider") || ua.includes("crawler") || ua.includes("preview")) {
+      return { isBot: true, reason: "generic_crawler_keyword" };
+    }
+
+    return { isBot: false, reason: "real_browser" };
   }
 
   /**
-   * Resolves a tracking ID, logs click telemetry asynchronously, and returns destination URL.
+   * Generates ultra-fast client-side HTML trampoline page for human touchpoint verification.
+   */
+  static generateTrampolineHtml(destinationUrl: string, trackingId: string, verifyToken: string): string {
+    const safeDest = destinationUrl.replace(/"/g, "&quot;");
+    const safeId = trackingId.replace(/"/g, "&quot;");
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="1;url=${safeDest}">
+  <title>Opening Link...</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .box {
+      text-align: center;
+      padding: 24px;
+      max-width: 320px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(59, 130, 246, 0.2);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.6s linear infinite;
+    }
+    .text {
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <div class="text">Redirecting to destination...</div>
+  </div>
+  <script>
+    (function() {
+      var dest = "${safeDest.replace(/'/g, "\\'")}";
+      var token = "${verifyToken}";
+      var trk = "${safeId.replace(/'/g, "\\'")}";
+      try {
+        var payload = JSON.stringify({
+          token: token,
+          trackingId: trk,
+          screenWidth: window.screen ? window.screen.width : 0,
+          screenHeight: window.screen ? window.screen.height : 0,
+          hasTouch: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0),
+          renderTimeMs: Math.round(performance.now())
+        });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/tracking/verify', new Blob([payload], { type: 'application/json' }));
+        } else {
+          fetch('/api/tracking/verify', {
+            method: 'POST',
+            body: payload,
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true
+          });
+        }
+      } catch(e) {}
+      window.location.replace(dest);
+    })();
+  </script>
+</body>
+</html>`;
+  }
+
+  /**
+   * Resolves a tracking ID, classifies bot vs human, logs click telemetry asynchronously,
+   * and returns destination URL and trampoline HTML.
    */
   static async resolveAndTrackClick(
     trackingId: string,
@@ -126,8 +262,20 @@ export class TrackingService {
       userAgent?: string;
       referer?: string;
       purpose?: string;
+      secPurpose?: string;
+      secFetchDest?: string;
+      secFetchMode?: string;
+      accept?: string;
+      acceptLanguage?: string;
     }
-  ): Promise<{ destinationUrl: string | null; campaignId?: string; recipientId?: string }> {
+  ): Promise<{
+    destinationUrl: string | null;
+    campaignId?: string;
+    recipientId?: string;
+    isBot: boolean;
+    botReason?: string;
+    trampolineHtml?: string;
+  }> {
     await connectToDatabase();
 
     const cleanId = (trackingId || "").trim();
@@ -146,35 +294,64 @@ export class TrackingService {
       status: "active",
     });
     if (!link) {
-      return { destinationUrl: null };
+      return { destinationUrl: null, isBot: false };
     }
 
     const now = new Date();
-
-    // Async Non-blocking click telemetry updates
     const orgId = link.organizationId.toString();
     const campId = link.campaignId.toString();
     const recipId = link.recipientId.toString();
 
-    // 1. Check for link preview bots / prefetches
-    const isBot = this.isBotOrPreview(metadata?.userAgent, metadata?.purpose);
+    // 1. Deep Bot & Prefetch Inspection
+    const botCheck = this.detectBot(metadata);
+    const isBot = botCheck.isBot;
+    const botReason = botCheck.reason;
 
-    // 2. Debounce: If link was clicked less than 2.5 seconds ago (e.g. mobile browser touch follow-ups), skip double increment
+    // Generate cryptographic verification token for candidate human click
+    const verifyToken = crypto.randomBytes(16).toString("hex");
+
+    // 2. Debounce: If link was clicked less than 2 seconds ago (rapid double-tap), avoid double counting
     const isRapidDuplicate =
-      link.lastClickedAt && now.getTime() - new Date(link.lastClickedAt).getTime() < 2500;
-
-    if (isBot || isRapidDuplicate) {
-      return {
-        destinationUrl: link.destinationUrl,
-        campaignId: campId,
-        recipientId: recipId,
-      };
-    }
+      !isBot && link.lastClickedAt && now.getTime() - new Date(link.lastClickedAt).getTime() < 2000;
 
     // Fire background updates without blocking redirect
     (async () => {
       try {
-        // 1. Create Click Event
+        const ipHash = metadata?.ip
+          ? crypto.createHash("sha256").update(metadata.ip).digest("hex").substring(0, 16)
+          : undefined;
+
+        if (isBot) {
+          // Log Bot Scan Event separately
+          await ClickEventModel.create({
+            organizationId: link.organizationId,
+            campaignId: link.campaignId,
+            recipientId: link.recipientId,
+            trackingId,
+            destinationUrl: link.destinationUrl,
+            clickedAt: now,
+            ipHash,
+            userAgent: metadata?.userAgent,
+            referer: metadata?.referer,
+            isBot: true,
+            botReason,
+            isHumanVerified: false,
+            metadata: { detectedBot: botReason },
+          });
+
+          // Increment Bot count only (Keeping real human stats 100% clean)
+          await Promise.all([
+            TrackingLinkModel.updateOne({ _id: link._id }, { $inc: { botClickCount: 1 } }),
+            CampaignModel.updateOne({ _id: link.campaignId }, { $inc: { "statistics.botClicksCount": 1 } }),
+          ]);
+          return;
+        }
+
+        if (isRapidDuplicate) {
+          return;
+        }
+
+        // 1. Create Human Click Event
         await ClickEventModel.create({
           organizationId: link.organizationId,
           campaignId: link.campaignId,
@@ -182,9 +359,13 @@ export class TrackingService {
           trackingId,
           destinationUrl: link.destinationUrl,
           clickedAt: now,
-          ipHash: metadata?.ip ? crypto.createHash("sha256").update(metadata.ip).digest("hex").substring(0, 16) : undefined,
+          ipHash,
           userAgent: metadata?.userAgent,
           referer: metadata?.referer,
+          isBot: false,
+          botReason: "real_browser",
+          isHumanVerified: true,
+          metadata: { verifyToken },
         });
 
         // 2. Update TrackingLink click count & times
@@ -234,10 +415,17 @@ export class TrackingService {
       }
     })();
 
+    const trampolineHtml = !isBot
+      ? this.generateTrampolineHtml(link.destinationUrl, trackingId, verifyToken)
+      : undefined;
+
     return {
       destinationUrl: link.destinationUrl,
       campaignId: campId,
       recipientId: recipId,
+      isBot,
+      botReason,
+      trampolineHtml,
     };
   }
 }

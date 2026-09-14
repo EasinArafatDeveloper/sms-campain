@@ -45,38 +45,36 @@ export async function GET(
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
     const referer = req.headers.get("referer") || undefined;
-    const purpose =
-      req.headers.get("purpose") ||
-      req.headers.get("sec-purpose") ||
-      req.headers.get("x-purpose") ||
-      undefined;
+    const purpose = req.headers.get("purpose") || undefined;
+    const secPurpose = req.headers.get("sec-purpose") || req.headers.get("x-purpose") || undefined;
+    const secFetchDest = req.headers.get("sec-fetch-dest") || undefined;
+    const secFetchMode = req.headers.get("sec-fetch-mode") || undefined;
+    const accept = req.headers.get("accept") || undefined;
+    const acceptLanguage = req.headers.get("accept-language") || undefined;
 
-    // 1. Try trackingIdCandidate (e.g. "eid-A8K7" or "A8K7")
-    let result = await TrackingService.resolveAndTrackClick(trackingIdCandidate, {
+    const requestMeta = {
       ip,
       userAgent,
       referer,
       purpose,
-    });
+      secPurpose,
+      secFetchDest,
+      secFetchMode,
+      accept,
+      acceptLanguage,
+    };
 
-    // 2. Fallback to hyphenated (e.g. "eid-A8K7")
+    // 1. Try trackingIdCandidate (e.g. "eid-a8k7" or "a8k7")
+    let result = await TrackingService.resolveAndTrackClick(trackingIdCandidate, requestMeta);
+
+    // 2. Fallback to hyphenated (e.g. "eid-a8k7")
     if (!result.destinationUrl && hyphenCandidate !== trackingIdCandidate) {
-      result = await TrackingService.resolveAndTrackClick(hyphenCandidate, {
-        ip,
-        userAgent,
-        referer,
-        purpose,
-      });
+      result = await TrackingService.resolveAndTrackClick(hyphenCandidate, requestMeta);
     }
 
-    // 3. Fallback to full path (e.g. "eid/A8K7")
+    // 3. Fallback to full path (e.g. "eid/a8k7")
     if (!result.destinationUrl && fullPathCandidate !== trackingIdCandidate) {
-      result = await TrackingService.resolveAndTrackClick(fullPathCandidate, {
-        ip,
-        userAgent,
-        referer,
-        purpose,
-      });
+      result = await TrackingService.resolveAndTrackClick(fullPathCandidate, requestMeta);
     }
 
     if (!result.destinationUrl) {
@@ -84,7 +82,20 @@ export async function GET(
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
-    // Fast 302 Found redirect to destination URL
+    // If candidate real human browser, serve ultra-fast Trampoline page with JS touchpoint beacon
+    if (!result.isBot && result.trampolineHtml) {
+      return new NextResponse(result.trampolineHtml, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
+      });
+    }
+
+    // For automated crawlers/preview bots, return fast 302 Found redirect
     return NextResponse.redirect(new URL(result.destinationUrl), {
       status: 302,
       headers: {

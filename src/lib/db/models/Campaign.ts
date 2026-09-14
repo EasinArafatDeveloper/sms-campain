@@ -29,6 +29,7 @@ export interface ICampaignDocument extends Document {
     uniqueClickers: number;
     repeatClickers: number;
     highIntentLeads: number;
+    botClicksCount?: number;
     deliveryRate: number;
     clickRate: number;
   };
@@ -73,6 +74,7 @@ const CampaignSchema = new Schema<ICampaignDocument>(
       uniqueClickers: { type: Number, default: 0 },
       repeatClickers: { type: Number, default: 0 },
       highIntentLeads: { type: Number, default: 0 },
+      botClicksCount: { type: Number, default: 0 },
       deliveryRate: { type: Number, default: 0 },
       clickRate: { type: Number, default: 0 },
     },

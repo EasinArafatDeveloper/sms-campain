@@ -32,6 +32,7 @@ export class AnalyticsService {
           uniqueClickers: { $sum: "$statistics.uniqueClickers" },
           repeatClickers: { $sum: "$statistics.repeatClickers" },
           highIntentLeads: { $sum: "$statistics.highIntentLeads" },
+          botScansFiltered: { $sum: "$statistics.botClicksCount" },
         },
       },
     ]);
@@ -43,6 +44,7 @@ export class AnalyticsService {
     const uniqueClickers = s.uniqueClickers || 0;
     const repeatClickers = s.repeatClickers || 0;
     const highIntentLeads = s.highIntentLeads || 0;
+    const botScansFiltered = s.botScansFiltered || 0;
 
     const clickRate = delivered > 0 ? Number(((uniqueClickers / delivered) * 100).toFixed(1)) : 0;
 
@@ -79,6 +81,7 @@ export class AnalyticsService {
       clickRate,
       repeatClickers,
       highIntentLeads,
+      botScansFiltered,
       funnel: [
         { label: "SMS Sent", count: smsSent, percent: 100, color: "#2563EB" },
         { label: "Delivered", count: delivered, percent: smsSent > 0 ? Number(((delivered / smsSent) * 100).toFixed(1)) : 0, color: "#3B82F6" },

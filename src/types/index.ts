@@ -81,6 +81,7 @@ export interface ICampaign {
     uniqueClickers: number;
     repeatClickers: number;
     highIntentLeads: number;
+    botClicksCount?: number;
     deliveryRate: number;
     clickRate: number;
   };

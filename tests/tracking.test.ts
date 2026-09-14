@@ -47,11 +47,38 @@ describe("Tracking & Phone Normalization Tests", () => {
     expect(seg.segments).toBe(2);
   });
 
-  it("should detect preview crawlers and prefetch requests", () => {
-    expect(TrackingService.isBotOrPreview("Mozilla/5.0 (compatible; Google-Page-Preview/1.0)")).toBe(true);
-    expect(TrackingService.isBotOrPreview("facebookexternalhit/1.1")).toBe(true);
-    expect(TrackingService.isBotOrPreview("WhatsApp/2.21.12.21")).toBe(true);
-    expect(TrackingService.isBotOrPreview("Mozilla/5.0", "prefetch")).toBe(true);
-    expect(TrackingService.isBotOrPreview("Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1")).toBe(false);
+  it("should deeply detect Truecaller, SMS preview crawlers, and prefetch requests", () => {
+    // Truecaller SMS scanner
+    expect(TrackingService.detectBot({ userAgent: "Truecaller/12.34 (Android; Mobile)" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "Dalvik/2.1.0 (Linux; U; Android 13; SM-G998B)" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "okhttp/4.9.2" }).isBot).toBe(true);
+
+    // Messaging link preview bots
+    expect(TrackingService.detectBot({ userAgent: "Mozilla/5.0 (compatible; Google-Page-Preview/1.0)" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "facebookexternalhit/1.1" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "WhatsApp/2.21.12.21" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "Applebot/0.1" }).isBot).toBe(true);
+
+    // Prefetch headers
+    expect(TrackingService.detectBot({ userAgent: "Mozilla/5.0", purpose: "prefetch" }).isBot).toBe(true);
+    expect(TrackingService.detectBot({ userAgent: "Mozilla/5.0", secPurpose: "prefetch" }).isBot).toBe(true);
+
+    // Real human mobile browser
+    const realIphone = TrackingService.detectBot({
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      acceptLanguage: "en-US,en;q=0.9",
+    });
+    expect(realIphone.isBot).toBe(false);
+  });
+
+  it("should generate client-side trampoline HTML with beacon verification", () => {
+    const html = TrackingService.generateTrampolineHtml("https://mybrand.com/offer", "eid-a8k7", "tok_12345");
+    expect(html).toContain("https://mybrand.com/offer");
+    expect(html).toContain("/api/tracking/verify");
+    expect(html).toContain("tok_12345");
+    expect(html).toContain("eid-a8k7");
+    expect(html).toContain("navigator.sendBeacon");
   });
 });
+

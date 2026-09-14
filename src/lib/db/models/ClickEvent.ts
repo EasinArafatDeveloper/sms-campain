@@ -10,6 +10,15 @@ export interface IClickEventDocument extends Document {
   ipHash?: string;
   userAgent?: string;
   referer?: string;
+  isBot: boolean;
+  botReason?: string;
+  isHumanVerified: boolean;
+  clientMeta?: {
+    screenWidth?: number;
+    screenHeight?: number;
+    hasTouch?: boolean;
+    renderTimeMs?: number;
+  };
   metadata?: Record<string, unknown>;
 }
 
@@ -24,6 +33,10 @@ const ClickEventSchema = new Schema<IClickEventDocument>(
     ipHash: { type: String },
     userAgent: { type: String },
     referer: { type: String },
+    isBot: { type: Boolean, default: false, index: true },
+    botReason: { type: String },
+    isHumanVerified: { type: Boolean, default: false, index: true },
+    clientMeta: { type: Schema.Types.Mixed },
     metadata: { type: Schema.Types.Mixed },
   },
   {
