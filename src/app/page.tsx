@@ -65,8 +65,8 @@ export default function LandingPage() {
       a: "Standard URLs take 40-70 characters, pushing your message into 2 or 3 SMS segments. SMSPro generates collision-free 6-digit cryptographic nano-links (e.g. `domain.com/t/583214`), keeping your total SMS under 160 GSM-7 characters so you only pay for 1 single SMS.",
     },
     {
-      q: "Can I connect my own BulkSMSBD, Greenweb, or Twilio account?",
-      a: "Yes! SMSPro is built as a true multi-tenant SaaS. In your Settings dashboard, you can paste your own BulkSMSBD API Key and approved Sender ID, test live connection, check balance, and send messages through your direct gateway credentials.",
+      q: "Can I connect my own ZendSMS, BulkSMSBD, or Twilio account?",
+      a: "Yes! SMSPro is built as a true multi-tenant SaaS. In your Settings dashboard, you can paste your own ZendSMS API Key and approved Sender ID, test live connection, check balance, and send messages through your direct gateway credentials.",
     },
     {
       q: "How does SMSPro prevent fake clicks from smartphone link previews?",
@@ -148,7 +148,7 @@ export default function LandingPage() {
               <span className="font-semibold text-slate-900 dark:text-white">Next-Gen Trackable SMS Engine</span>
               <span className="text-slate-400 dark:text-slate-600">|</span>
               <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1 font-semibold">
-                Live BulkSMSBD & Multi-Gateway <ArrowRight className="w-3 h-3" />
+                Live ZendSMS & Multi-Gateway <ArrowRight className="w-3 h-3" />
               </span>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function LandingPage() {
                           88
                         </div>
                         <div>
-                          <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100">8809648910379</div>
+                          <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100">8809612781020</div>
                           <div className="text-[9px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Sender
                           </div>
@@ -401,7 +401,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Direct SMS Gateway Control</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Plug in your own BulkSMSBD API Key, Greenweb token, or custom gateway in Settings. Test connection and check live balance directly.
+                Plug in your own ZendSMS API Key, Greenweb token, or custom gateway in Settings. Test connection and check live balance directly.
               </p>
             </Card>
 
@@ -462,7 +462,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">2. Automatic Link Injection</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                The engine generates unique 6-digit short links per recipient and dispatches via your configured BulkSMSBD gateway.
+                The engine generates unique 6-digit short links per recipient and dispatches via your configured ZendSMS gateway.
               </p>
             </div>
 
@@ -594,11 +594,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
               <Icon3DServer size={24} />
-              <span>BulkSMSBD (Live API)</span>
+              <span>ZendSMS (Live API)</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
               <Icon3DShield size={24} />
-              <span>Greenweb BD</span>
+              <span>BulkSMSBD</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
               <Icon3DUsers size={24} />
@@ -643,7 +643,7 @@ export default function LandingPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>BulkSMSBD Gateway Connection</span>
+                    <span>ZendSMS Gateway Connection</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />

@@ -24,20 +24,20 @@ export default function SettingsPage() {
 
   // State
   const [orgName, setOrgName] = useState("SMSPro Enterprise");
-  const [defaultSenderId, setDefaultSenderId] = useState("8809648910379");
-  const [trackingDomain, setTrackingDomain] = useState("https://go.mybrand.com");
+  const [defaultSenderId, setDefaultSenderId] = useState("8809612781020");
+  const [trackingDomain, setTrackingDomain] = useState("https://sms-campain.vercel.app");
   const [trackingLength, setTrackingLength] = useState(6);
 
-  // SMS Gateway Config (BulkSMSBD)
-  const [apiKey, setApiKey] = useState("xkp2EbUxxu2vRtC6ycRE");
-  const [senderId, setSenderId] = useState("8809648910379");
-  const [apiUrl, setApiUrl] = useState("http://bulksmsbd.net/api/smsapi");
-  const [balance, setBalance] = useState<number | null>(null);
+  // SMS Gateway Config (ZendSMS)
+  const [apiKey, setApiKey] = useState("sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo");
+  const [senderId, setSenderId] = useState("8809612781020");
+  const [apiUrl, setApiUrl] = useState("https://api.zendsms.com/api/v1/send-sms");
+  const [balance, setBalance] = useState<number | null>(4704);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
   // Test SMS State
   const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState("Test SMS verification from SMSPro Gateway.");
+  const [testMessage, setTestMessage] = useState("Test SMS verification from SMSPro ZendSMS Gateway.");
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
 
@@ -51,13 +51,13 @@ export default function SettingsPage() {
         const data = await res.json();
         if (data.organization) {
           setOrgName(data.organization.name || "SMSPro Enterprise");
-          setDefaultSenderId(data.organization.defaultSenderId || "8809648910379");
-          setTrackingDomain(data.organization.trackingDomain || "https://go.mybrand.com");
+          setDefaultSenderId(data.organization.defaultSenderId || "8809612781020");
+          setTrackingDomain(data.organization.trackingDomain || "https://sms-campain.vercel.app");
         }
         if (data.providerConfig) {
-          setApiKey(data.providerConfig.apiKey || "xkp2EbUxxu2vRtC6ycRE");
-          setSenderId(data.providerConfig.senderId || "8809648910379");
-          setApiUrl(data.providerConfig.apiUrl || "http://bulksmsbd.net/api/smsapi");
+          setApiKey(data.providerConfig.apiKey || "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo");
+          setSenderId(data.providerConfig.senderId || "8809612781020");
+          setApiUrl(data.providerConfig.apiUrl || "https://api.zendsms.com/api/v1/send-sms");
         }
         if (typeof data.balance !== "undefined") {
           setBalance(data.balance);
@@ -90,8 +90,8 @@ export default function SettingsPage() {
             },
           },
           providerConfig: {
-            provider: "bulksmsbd",
-            name: "BulkSMSBD Primary",
+            provider: "zendsms",
+            name: "ZendSMS Primary",
             apiKey,
             senderId,
             apiUrl,
@@ -154,7 +154,7 @@ export default function SettingsPage() {
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 border-b border-slate-200">
           {[
-            { id: "gateway", label: "SMS Gateway (BulkSMSBD)", icon: Server },
+            { id: "gateway", label: "SMS Gateway (ZendSMS)", icon: Server },
             { id: "general", label: "Organization & Tracking", icon: Globe },
             { id: "team", label: "Team Members & RBAC", icon: Users },
           ].map((tab) => {
@@ -177,29 +177,29 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {/* Tab 1: SMS Gateway (BulkSMSBD) */}
+        {/* Tab 1: SMS Gateway (ZendSMS) */}
         {activeTab === "gateway" && (
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <div>
-                  <CardTitle>BulkSMSBD Gateway Credentials</CardTitle>
+                  <CardTitle>ZendSMS Gateway Credentials</CardTitle>
                   <CardDescription>
-                    Official SMS Gateway API for high-deliverability Bangladesh messaging
+                    Official ZendSMS API (app.zendsms.com) for high-deliverability Bangladesh messaging
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-emerald-700">Gateway Active</span>
+                  <span className="text-xs font-semibold text-emerald-700">ZendSMS Active</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 {/* Account Balance Alert */}
                 <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-500 text-[11px] font-semibold uppercase">BulkSMSBD Credit Balance</span>
+                    <span className="text-slate-500 text-[11px] font-semibold uppercase">ZendSMS Credit Balance</span>
                     <div className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {formatNumber(balance)} <span className="text-xs font-semibold text-blue-700">BDT</span>
+                      ৳{formatNumber(balance)} <span className="text-xs font-semibold text-blue-700">BDT</span>
                     </div>
                   </div>
                   <Button
@@ -226,7 +226,7 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">API Key</label>
+                    <label className="block font-semibold text-slate-700 mb-1">API Key (Bearer Token)</label>
                     <input
                       type="text"
                       value={apiKey}
@@ -235,7 +235,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Approved Sender ID</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Approved Sender ID (CLI)</label>
                     <input
                       type="text"
                       value={senderId}
@@ -267,7 +267,7 @@ export default function SettingsPage() {
               <CardHeader>
                 <div>
                   <CardTitle>Test SMS Dispatcher</CardTitle>
-                  <CardDescription>Send a real test SMS message via BulkSMSBD API to verify connection</CardDescription>
+                  <CardDescription>Send a real test SMS message via ZendSMS API to verify connection</CardDescription>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">

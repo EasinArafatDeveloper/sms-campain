@@ -108,7 +108,7 @@ export default function ReportsPage() {
           <StatCard
             title="Avg Delivery Rate"
             value={`${data.overview.averageDeliveryRate}%`}
-            subtitle="BulkSMSBD Gateway"
+            subtitle="ZendSMS Gateway"
             icon={CheckCircle2}
             iconBg="bg-emerald-50"
             iconColor="text-emerald-600"

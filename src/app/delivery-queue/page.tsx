@@ -92,13 +92,13 @@ export default function DeliveryQueuePage() {
   };
 
   const health = data?.health || {
-    provider: "BULKSMSBD",
+    provider: "ZENDSMS",
     status: "operational",
-    averageResponseMs: 42,
+    averageResponseMs: 38,
     successRate: 99.4,
     requestsPerMinute: 0,
     retries: 0,
-    balance: 15420.5,
+    balance: 4704,
     currency: "BDT",
   };
 
@@ -112,7 +112,7 @@ export default function DeliveryQueuePage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Delivery Queue & Dispatcher</h1>
             <p className="text-xs text-slate-500 mt-1">
-              Real-time SMS queue monitoring, exponential backoff retries, and BulkSMSBD gateway status.
+              Real-time SMS queue monitoring, exponential backoff retries, and ZendSMS gateway status.
             </p>
           </div>
           <div className="flex items-center gap-3">

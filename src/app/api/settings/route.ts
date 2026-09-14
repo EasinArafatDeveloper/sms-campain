@@ -22,8 +22,8 @@ export async function GET() {
     return NextResponse.json({
       organization: org || {
         name: "SMSPro Enterprise",
-        defaultSenderId: "8809648910379",
-        trackingDomain: "https://go.mybrand.com",
+        defaultSenderId: "8809612781020",
+        trackingDomain: "https://sms-campain.vercel.app",
         settings: {
           defaultTrackingLength: 6,
           defaultTrackingFormat: "numeric",
@@ -32,12 +32,12 @@ export async function GET() {
         },
       },
       providerConfig: providerCred || {
-        provider: "bulksmsbd",
-        name: "BulkSMSBD Primary",
-        apiKey: "xkp2EbUxxu2vRtC6ycRE",
-        senderId: "8809648910379",
-        apiUrl: "http://bulksmsbd.net/api/smsapi",
-        balance: balanceRes.balance || 15420.5,
+        provider: "zendsms",
+        name: "ZendSMS Primary",
+        apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
+        senderId: "8809612781020",
+        apiUrl: "https://api.zendsms.com/api/v1/send-sms",
+        balance: balanceRes.balance || 4704,
       },
       balance: balanceRes.balance,
       teamMembers: teamMembers.length > 0 ? teamMembers : [

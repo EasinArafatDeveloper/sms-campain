@@ -81,7 +81,7 @@ export default function RegisterPage() {
               </span>
             </h2>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Create your dedicated workspace, connect your BulkSMSBD credentials in Settings, and launch trackable SMS campaigns in minutes.
+              Create your dedicated workspace, connect your ZendSMS credentials in Settings, and launch trackable SMS campaigns in minutes.
             </p>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function RegisterPage() {
             </div>
             <div className="text-xs">
               <div className="font-bold text-white">Bring Your Own SMS Gateway</div>
-              <div className="text-[11px] text-slate-400">Configure BulkSMSBD, Greenweb, or custom API endpoints</div>
+              <div className="text-[11px] text-slate-400">Configure ZendSMS, Greenweb, or custom API endpoints</div>
             </div>
           </div>
         </div>

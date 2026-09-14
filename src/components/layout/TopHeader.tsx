@@ -26,7 +26,7 @@ export function TopHeader() {
         {/* Gateway Status Badge */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 rounded-lg text-xs font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>BulkSMSBD: Active</span>
+          <span>ZendSMS: Active</span>
         </div>
 
         {/* Theme Switcher Toggle */}
@@ -62,7 +62,7 @@ export function TopHeader() {
                     <span>SMS Gateway Connected</span>
                   </div>
                   <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
-                    BulkSMSBD gateway is active and ready to broadcast campaigns.
+                    ZendSMS gateway is active and ready to broadcast campaigns.
                   </div>
                 </div>
               </div>
