@@ -19,3 +19,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Failed to fetch campaign" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const session = await getSession();
+    const orgId = session?.organizationId || "670000000000000000000001";
+    const userId = session?.userId;
+
+    const result = await CampaignService.deleteCampaign(orgId, id, userId);
+    if (!result.success) {
+      return NextResponse.json({ error: "Campaign not found or already deleted" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Campaign and all associated delivery records, tracking links, and click events deleted successfully.",
+      deletedCounts: result.deletedCounts,
+    });
+  } catch (err: any) {
+    console.error("[Campaign API] Delete error:", err);
+    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
+  }
+}
+

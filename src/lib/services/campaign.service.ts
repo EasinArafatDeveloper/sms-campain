@@ -6,6 +6,7 @@ import {
   CampaignRecipientModel,
   TrackingLinkModel,
   DeliveryJobModel,
+  ClickEventModel,
   AuditLogModel,
 } from "@/lib/db/models";
 import { TrackingService } from "./tracking.service";
@@ -299,5 +300,62 @@ export class CampaignService {
     }).lean();
 
     return (camp as unknown as ICampaign) || null;
+  }
+
+  /**
+   * Permanently deletes a campaign and performs full cascade deletion of all
+   * associated recipients, queue delivery jobs, unique tracking links, and click events.
+   */
+  static async deleteCampaign(
+    organizationId: string,
+    campaignId: string,
+    userId?: string
+  ): Promise<{ success: boolean; deletedCounts: Record<string, number> }> {
+    await connectToDatabase();
+    const orgObjId = new mongoose.Types.ObjectId(organizationId);
+    const campObjId = new mongoose.Types.ObjectId(campaignId);
+
+    const campaign = await CampaignModel.findOne({ _id: campObjId, organizationId: orgObjId });
+    if (!campaign) {
+      return { success: false, deletedCounts: {} };
+    }
+
+    // Cascade delete all associated records across collections
+    const [recipientsRes, linksRes, jobsRes, clicksRes, campRes] = await Promise.all([
+      CampaignRecipientModel.deleteMany({ campaignId: campObjId, organizationId: orgObjId }),
+      TrackingLinkModel.deleteMany({ campaignId: campObjId, organizationId: orgObjId }),
+      DeliveryJobModel.deleteMany({ campaignId: campObjId, organizationId: orgObjId }),
+      ClickEventModel.deleteMany({ campaignId: campObjId, organizationId: orgObjId }),
+      CampaignModel.deleteOne({ _id: campObjId, organizationId: orgObjId }),
+    ]);
+
+    // Log deletion audit event
+    if (userId) {
+      await AuditLogModel.create({
+        organizationId: orgObjId,
+        userId: new mongoose.Types.ObjectId(userId),
+        action: "CAMPAIGN_DELETED",
+        resourceType: "campaign",
+        resourceId: campaignId,
+        metadata: {
+          campaignName: campaign.name,
+          deletedRecipients: recipientsRes.deletedCount,
+          deletedLinks: linksRes.deletedCount,
+          deletedJobs: jobsRes.deletedCount,
+          deletedClicks: clicksRes.deletedCount,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      deletedCounts: {
+        recipients: recipientsRes.deletedCount || 0,
+        trackingLinks: linksRes.deletedCount || 0,
+        deliveryJobs: jobsRes.deletedCount || 0,
+        clickEvents: clicksRes.deletedCount || 0,
+        campaigns: campRes.deletedCount || 0,
+      },
+    };
   }
 }
