@@ -236,7 +236,7 @@ export interface IAuditLog {
 export interface ISmsProviderConfig {
   _id: string;
   organizationId: string;
-  provider: "zendsms" | "bulksmsbd" | "mock" | "generic";
+  provider: "zendsms" | "mock" | "generic";
   name: string;
   apiKey: string;
   senderId: string;

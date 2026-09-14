@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
       name: validated.data.organizationName,
       slug: `${slug}-${Date.now().toString().slice(-4)}`,
       plan: "growth",
-      senderIds: ["MYBRAND", "SMSPRO", "8809648910379"],
-      defaultSenderId: "8809648910379",
+      senderIds: ["MYBRAND", "SMSPRO", "8809612781020"],
+      defaultSenderId: "8809612781020",
     });
 
     const user = await UserModel.create({
@@ -52,17 +52,17 @@ export async function POST(req: NextRequest) {
       permissions: ["*"],
     });
 
-    // Default BulkSMSBD Provider Credential
+    // Default ZendSMS Provider Credential
     await ApiCredentialModel.create({
       organizationId: org._id,
-      provider: "bulksmsbd",
-      name: "Primary BulkSMSBD Gateway",
-      apiKey: "xkp2EbUxxu2vRtC6ycRE",
-      senderId: "8809648910379",
-      apiUrl: "http://bulksmsbd.net/api/smsapi",
+      provider: "zendsms",
+      name: "ZendSMS Primary Gateway",
+      apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
+      senderId: "8809612781020",
+      apiUrl: "https://api.zendsms.com/api/v1/send-sms",
       isDefault: true,
       status: "active",
-      balance: 15420.5,
+      balance: 4704,
     });
 
     const token = await signSessionToken({

@@ -65,7 +65,7 @@ export default function LandingPage() {
       a: "Standard URLs take 40-70 characters, pushing your message into 2 or 3 SMS segments. SMSPro generates collision-free 6-digit cryptographic nano-links (e.g. `domain.com/t/583214`), keeping your total SMS under 160 GSM-7 characters so you only pay for 1 single SMS.",
     },
     {
-      q: "Can I connect my own ZendSMS, BulkSMSBD, or Twilio account?",
+      q: "Can I connect my own ZendSMS, Infobip, or Twilio account?",
       a: "Yes! SMSPro is built as a true multi-tenant SaaS. In your Settings dashboard, you can paste your own ZendSMS API Key and approved Sender ID, test live connection, check balance, and send messages through your direct gateway credentials.",
     },
     {
@@ -598,7 +598,7 @@ export default function LandingPage() {
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
               <Icon3DShield size={24} />
-              <span>BulkSMSBD</span>
+              <span>Infobip Gateway</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 text-slate-800 dark:text-slate-200 font-bold text-xs hover:border-blue-500/40 transition-all shadow-sm">
               <Icon3DUsers size={24} />

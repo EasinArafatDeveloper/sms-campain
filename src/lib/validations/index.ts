@@ -59,7 +59,7 @@ export const UpdateSettingsSchema = z.object({
 });
 
 export const SaveSmsProviderSchema = z.object({
-  provider: z.enum(["zendsms", "bulksmsbd", "mock", "generic"]),
+  provider: z.enum(["zendsms", "mock", "generic"]),
   name: z.string().min(2, "Provider name is required"),
   apiKey: z.string().min(4, "API Key is required"),
   senderId: z.string().min(2, "Sender ID is required"),

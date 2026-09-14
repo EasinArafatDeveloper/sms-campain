@@ -8,7 +8,7 @@ SMSPro is a production-grade, multi-tenant enterprise SaaS platform engineered f
 
 ```mermaid
 graph TD
-    A[1. SMS Sent via BulkSMSBD] --> B[2. Real-Time Delivery Webhooks]
+    A[1. SMS Sent via ZendSMS Gateway] --> B[2. Real-Time Delivery Webhooks]
     B --> C[3. Recipient Clicks Tracking URL]
     C --> D[4. Click Attributed & Engagement Profile Updated]
     D --> E[5. Repeated Engagement Classified as High-Intent Lead]
@@ -26,7 +26,7 @@ graph TD
 - **Styling**: Vanilla Tailwind CSS, Radix UI Primitives, Lucide Icons
 - **Data & Persistence**: MongoDB Atlas via Mongoose (with tenant compound indexes)
 - **Queue Architecture**: BullMQ + Redis (with resilient in-memory/MongoDB fallback)
-- **SMS Gateway**: BulkSMSBD Provider Adapter (API Key: `xkp2EbUxxu2vRtC6ycRE`, Sender ID: `8809648910379`)
+- **SMS Gateway**: ZendSMS Official Provider Adapter (API Key: `sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo`, Sender ID: `8809612781020`)
 - **Authentication**: JWT Sessions (`jose` HS256) with HTTP-only cookies and RBAC
 - **Validation**: Zod (100% schema coverage)
 - **Testing**: Vitest automated unit & integration test suites
@@ -48,12 +48,12 @@ MONGODB_URI=your_mongodb_atlas_connection_string
 AUTH_SECRET=your_jwt_secret_key_at_least_32_chars_long
 TRACKING_BASE_URL=http://localhost:3000/t
 
-# SMS Provider
-SMS_PROVIDER=bulksmsbd
-BULKSMSBD_API_URL=http://bulksmsbd.net/api/smsapi
-BULKSMSBD_BALANCE_URL=http://bulksmsbd.net/api/getBalanceApi
-BULKSMSBD_API_KEY=your_bulksmsbd_api_key
-BULKSMSBD_SENDER_ID=your_approved_sender_id
+# SMS Provider (ZendSMS)
+SMS_PROVIDER=zendsms
+ZENDSMS_API_URL=https://api.zendsms.com/api/v1/send-sms
+ZENDSMS_BALANCE_URL=https://api.zendsms.com/api/v1/balance
+ZENDSMS_API_KEY=your_zendsms_api_key
+ZENDSMS_SENDER_ID=8809612781020
 ```
 
 ### 3. Seed Database
@@ -87,9 +87,9 @@ npm run start
 2. **Campaigns (`/campaigns`)**: Filterable and searchable campaign list with status badges and CTR analytics.
 3. **Create Campaign Wizard (`/campaigns/new`)**: 4-step wizard with SMS segment counter, `{TRACKABLE_LINK}` merge tag, and mobile preview.
 4. **Unique Link Generator (`/link-generator`)**: Cryptographic short ID generator with collision retry and recipient-campaign mapping.
-5. **Delivery Queue (`/delivery-queue`)**: 6 KPI cards, live queue telemetry, and BulkSMSBD Gateway Health monitor.
+5. **Delivery Queue (`/delivery-queue`)**: 6 KPI cards, live queue telemetry, and ZendSMS Gateway Health monitor.
 6. **Click Analytics (`/click-analytics`)**: User-level click attribution table and conversion funnel.
 7. **Active Leads (`/active-leads`)**: Smart audience rules (>=3 campaigns, >=2 clicks, within 30 days), 77.5% volume reduction calculation, and 1-click retargeting.
 8. **Audience Segments (`/audiences`)**: Composable rule builder with audience count preview.
 9. **Reports (`/reports`)**: Aggregated delivery and click performance metrics with CSV export.
-10. **Settings (`/settings`)**: BulkSMSBD Gateway credentials, live credit balance check, and Test SMS dispatcher.
+10. **Settings (`/settings`)**: ZendSMS Gateway credentials, live credit balance check, and Test SMS dispatcher.

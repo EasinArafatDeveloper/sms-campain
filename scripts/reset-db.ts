@@ -48,7 +48,7 @@ async function resetClean() {
     NotificationModel.deleteMany({}),
   ]);
 
-  console.log("[Clean Reset] Initializing pristine workspace & BulkSMSBD configuration...");
+  console.log("[Clean Reset] Initializing pristine workspace & ZendSMS configuration...");
 
   const org = await OrganizationModel.create({
     _id: new mongoose.Types.ObjectId("670000000000000000000001"),
@@ -56,8 +56,8 @@ async function resetClean() {
     slug: "smspro-enterprise",
     plan: "enterprise",
     status: "active",
-    senderIds: ["8809648910379", "MYBRAND", "SMSPRO"],
-    defaultSenderId: "8809648910379",
+    senderIds: ["8809612781020", "MYBRAND", "SMSPRO"],
+    defaultSenderId: "8809612781020",
     trackingDomain: "https://go.mybrand.com",
     settings: {
       defaultTrackingLength: 6,
@@ -86,17 +86,17 @@ async function resetClean() {
     permissions: ["*"],
   });
 
-  // BulkSMSBD Gateway Credential
+  // ZendSMS Gateway Credential
   await ApiCredentialModel.create({
     organizationId: org._id,
-    provider: "bulksmsbd",
-    name: "BulkSMSBD Primary Gateway",
-    apiKey: "xkp2EbUxxu2vRtC6ycRE",
-    senderId: "8809648910379",
-    apiUrl: "http://bulksmsbd.net/api/smsapi",
+    provider: "zendsms",
+    name: "ZendSMS Primary Gateway",
+    apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
+    senderId: "8809612781020",
+    apiUrl: "https://api.zendsms.com/api/v1/send-sms",
     isDefault: true,
     status: "active",
-    balance: 15420.5,
+    balance: 4704,
   });
 
   console.log("[Clean Reset] Workspace reset complete! Database is 100% clean and fresh.");

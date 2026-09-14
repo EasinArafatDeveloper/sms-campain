@@ -31,7 +31,7 @@ const DeliveryJobSchema = new Schema<IDeliveryJobDocument>(
     phone: { type: String, required: true },
     message: { type: String, required: true },
     senderId: { type: String, required: true },
-    provider: { type: String, default: "bulksmsbd" },
+    provider: { type: String, default: "zendsms" },
     status: {
       type: String,
       enum: ["queued", "processing", "sent", "delivered", "failed", "retrying", "pending_retry"],

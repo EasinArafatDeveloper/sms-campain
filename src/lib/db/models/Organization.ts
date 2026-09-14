@@ -24,8 +24,8 @@ const OrganizationSchema = new Schema<IOrganizationDocument>(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     plan: { type: String, enum: ["starter", "growth", "enterprise"], default: "growth" },
     status: { type: String, enum: ["active", "suspended"], default: "active" },
-    senderIds: { type: [String], default: ["MYBRAND", "SMSPRO", "8809648910379"] },
-    defaultSenderId: { type: String, default: "8809648910379" },
+    senderIds: { type: [String], default: ["MYBRAND", "SMSPRO", "8809612781020"] },
+    defaultSenderId: { type: String, default: "8809612781020" },
     trackingDomain: { type: String, default: "https://go.mybrand.com" },
     settings: {
       defaultTrackingLength: { type: Number, default: 6 },

@@ -191,7 +191,7 @@ export class CampaignService {
           phone: item.phone,
           message: personalizedMessage,
           senderId: data.senderId,
-          provider: "bulksmsbd",
+          provider: "zendsms",
           status: "queued",
           attempts: 0,
           maxAttempts: 3,

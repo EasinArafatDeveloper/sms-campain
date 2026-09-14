@@ -44,7 +44,7 @@ function CreateCampaignForm() {
   const [name, setName] = useState(
     isRetargeting ? "High-Intent VIP Retargeting" : ""
   );
-  const [senderId, setSenderId] = useState("8809648910379");
+  const [senderId, setSenderId] = useState("8809612781020");
   const [message, setMessage] = useState(
     "Special offer is live! Get 20% discount today. Click here: {TRACKABLE_LINK}"
   );
@@ -306,11 +306,11 @@ function CreateCampaignForm() {
                   onChange={(e) => setSenderId(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="8809648910379">8809648910379 (BulkSMSBD Approved)</option>
+                  <option value="8809612781020">8809612781020 (ZendSMS Official)</option>
                   <option value="SMSPRO">SMSPRO</option>
                   <option value="MYBRAND">MYBRAND</option>
                 </select>
-                <p className="text-[11px] text-slate-400 mt-1">Sender IDs registered with BulkSMSBD gateway.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Sender IDs registered with ZendSMS gateway.</p>
               </div>
 
               <div>
@@ -690,7 +690,7 @@ function CreateCampaignForm() {
                   </div>
                   <div>
                     <span className="text-slate-400 block">Gateway Provider:</span>
-                    <strong className="text-blue-700 text-sm">BulkSMSBD (Live API)</strong>
+                    <strong className="text-blue-700 text-sm">ZendSMS (Live API)</strong>
                   </div>
                 </div>
 

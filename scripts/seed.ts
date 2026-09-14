@@ -55,8 +55,8 @@ async function seed() {
     slug: "smspro-enterprise",
     plan: "enterprise",
     status: "active",
-    senderIds: ["8809648910379", "MYBRAND", "SMSPRO"],
-    defaultSenderId: "8809648910379",
+    senderIds: ["8809612781020", "MYBRAND", "SMSPRO"],
+    defaultSenderId: "8809612781020",
     trackingDomain: "https://go.mybrand.com",
     settings: {
       defaultTrackingLength: 6,
@@ -67,14 +67,12 @@ async function seed() {
   });
 
   const passwordHash = await bcrypt.hash("password123", 10);
-
   const owner = await UserModel.create({
     _id: new mongoose.Types.ObjectId("670000000000000000000002"),
     name: "Omer Sharif",
     email: "omer@smspro.io",
     passwordHash,
     role: "owner",
-    status: "active",
     defaultOrganizationId: org._id,
   });
 
@@ -85,17 +83,17 @@ async function seed() {
     permissions: ["*"],
   });
 
-  // BulkSMSBD API Credential
+  // ZendSMS API Credential
   await ApiCredentialModel.create({
     organizationId: org._id,
-    provider: "bulksmsbd",
-    name: "BulkSMSBD Primary Gateway",
-    apiKey: "xkp2EbUxxu2vRtC6ycRE",
-    senderId: "8809648910379",
-    apiUrl: "http://bulksmsbd.net/api/smsapi",
+    provider: "zendsms",
+    name: "ZendSMS Primary Gateway",
+    apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
+    senderId: "8809612781020",
+    apiUrl: "https://api.zendsms.com/api/v1/send-sms",
     isDefault: true,
     status: "active",
-    balance: 15420.5,
+    balance: 4704,
   });
 
   console.log("[Seed] Creating Primary & Historical Campaigns (128 total)...");
@@ -103,7 +101,7 @@ async function seed() {
     _id: new mongoose.Types.ObjectId("670000000000000000000010"),
     organizationId: org._id,
     name: "September Product Promotion",
-    senderId: "8809648910379",
+    senderId: "8809612781020",
     message: "Special September offer is live. Get 20% off today. Click here: {TRACKABLE_LINK}",
     status: "completed",
     audienceName: "September Customer Database",
@@ -135,7 +133,7 @@ async function seed() {
   const otherCampaigns = [
     {
       name: "Flash Weekend 20% Discount",
-      senderId: "8809648910379",
+      senderId: "8809612781020",
       message: "Weekend Flash Sale! 20% off all apparel. Shop now: {TRACKABLE_LINK}",
       status: "completed",
       recipientCount: 5000,
@@ -158,7 +156,7 @@ async function seed() {
     },
     {
       name: "New Fall Collection VIP Access",
-      senderId: "8809648910379",
+      senderId: "8809612781020",
       message: "Exclusive VIP preview of Fall 2026. Access link: {TRACKABLE_LINK}",
       status: "completed",
       recipientCount: 5000,
@@ -181,7 +179,7 @@ async function seed() {
     },
     {
       name: "Cart Abandonment Reminder",
-      senderId: "8809648910379",
+      senderId: "8809612781020",
       message: "Your bag is waiting for you! Complete order here: {TRACKABLE_LINK}",
       status: "sending",
       recipientCount: 1200,
@@ -228,7 +226,7 @@ async function seed() {
     bulkCampaigns.push({
       organizationId: org._id,
       name: `Promo Broadcast #${i}`,
-      senderId: "8809648910379",
+      senderId: "8809612781020",
       message: `Exclusive subscriber offer #${i}: {TRACKABLE_LINK}`,
       status: "completed",
       recipientCount: 9700,
@@ -336,8 +334,8 @@ async function seed() {
       trackingId,
       phone,
       message: `Special September offer is live. Get 20% off today. Click here: ${uniqueUrl}`,
-      senderId: "8809648910379",
-      provider: "bulksmsbd",
+      senderId: "8809612781020",
+      provider: "zendsms",
       status: isDelivered ? "delivered" : isFailed ? "failed" : "pending_retry",
       attempts: isFailed ? 3 : 1,
       maxAttempts: 3,

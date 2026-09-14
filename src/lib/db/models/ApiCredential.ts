@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IApiCredentialDocument extends Document {
   organizationId: mongoose.Types.ObjectId;
-  provider: "zendsms" | "bulksmsbd" | "mock" | "generic";
+  provider: "zendsms" | "mock" | "generic";
   name: string;
   apiKey: string;
   senderId: string;
@@ -18,7 +18,7 @@ export interface IApiCredentialDocument extends Document {
 const ApiCredentialSchema = new Schema<IApiCredentialDocument>(
   {
     organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
-    provider: { type: String, enum: ["zendsms", "bulksmsbd", "mock", "generic"], default: "zendsms" },
+    provider: { type: String, enum: ["zendsms", "mock", "generic"], default: "zendsms" },
     name: { type: String, required: true },
     apiKey: { type: String, required: true },
     senderId: { type: String, required: true },
