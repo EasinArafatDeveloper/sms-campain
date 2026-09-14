@@ -230,7 +230,7 @@ function CreateCampaignForm() {
       const digits = "583214976023";
       return digits.slice(0, Math.max(4, Math.min(10, trackingLength)));
     } else {
-      const chars = "A8K72P9MX4HQ";
+      const chars = "a8k72p9mx4hq";
       return chars.slice(0, Math.max(4, Math.min(10, trackingLength)));
     }
   }, [trackingFormat, trackingLength]);
@@ -746,7 +746,7 @@ function CreateCampaignForm() {
                           : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                       }`}
                     >
-                      Alphanumeric (e.g. {"A8K72P9M".slice(0, trackingLength)})
+                      Alphanumeric (e.g. {"a8k72p9m".slice(0, trackingLength)})
                     </button>
                     <button
                       type="button"

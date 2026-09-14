@@ -17,7 +17,7 @@ export class TrackingService {
       const id = min + (randomValue % (max - min + 1));
       return id.toString();
     } else {
-      const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // Removed ambiguous 0,1,I,O
+      const chars = "23456789abcdefghjkmnpqrstuvwxyz"; // Clean lowercase alphanumeric (removed ambiguous 0,1,l,o,i)
       const bytes = crypto.randomBytes(length);
       let result = "";
       for (let i = 0; i < length; i++) {
@@ -136,7 +136,11 @@ export class TrackingService {
     const link = await TrackingLinkModel.findOne({
       $or: [
         { trackingId: cleanId },
+        { trackingId: cleanId.toLowerCase() },
         { trackingId: subId },
+        { trackingId: subId.toLowerCase() },
+        { trackingId: { $regex: new RegExp(`^${cleanId}$`, "i") } },
+        { trackingId: { $regex: new RegExp(`^${subId}$`, "i") } },
         { uniqueUrl: { $regex: new RegExp(`/${cleanId}$`, "i") } },
       ],
       status: "active",

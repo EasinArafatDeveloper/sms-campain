@@ -12,7 +12,7 @@ describe("Tracking & Phone Normalization Tests", () => {
   it("should generate an 8-character alphanumeric tracking ID", () => {
     const id = TrackingService.generateShortId("alphanumeric", 8);
     expect(id.length).toBe(8);
-    expect(id).toMatch(/^[2-9A-HJ-NP-Z]{8}$/);
+    expect(id).toMatch(/^[2-9a-hj-np-z]{8}$/);
   });
 
   it("should correctly normalize local Bangladesh phone numbers (017... to 88017...)", () => {
