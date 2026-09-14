@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
@@ -19,6 +20,10 @@ import {
   Search,
   Filter,
   Download,
+  Layers,
+  ChevronDown,
+  X,
+  FileSpreadsheet,
 } from "lucide-react";
 import { formatNumber, formatPercentage, formatDateTime } from "@/lib/utils";
 
@@ -31,15 +36,45 @@ export default function ClickAnalyticsPage() {
 }
 
 function ClickAnalyticsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialCampaignId = searchParams.get("campaignId") || "all";
+
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<string>(initialCampaignId);
   const [data, setData] = useState<any>(null);
   const [attributions, setAttributions] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedCampaign, setSelectedCampaign] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Sync state if URL query param changes
+  useEffect(() => {
+    const fromUrl = searchParams.get("campaignId") || "all";
+    if (fromUrl !== selectedCampaign) {
+      setSelectedCampaign(fromUrl);
+    }
+  }, [searchParams]);
+
+  // Load list of all campaigns for dropdown
+  useEffect(() => {
+    async function loadCampaignsList() {
+      try {
+        const res = await fetch("/api/campaigns?limit=100");
+        const json = await res.json();
+        const list = json.data || [];
+        setCampaigns(list);
+      } catch (err) {
+        console.error("Failed to load campaigns list for analytics filter", err);
+      }
+    }
+    loadCampaignsList();
+  }, []);
+
+  // Load analytics & attributions whenever selected campaign or search query changes
   useEffect(() => {
     async function loadAnalytics() {
       try {
+        setIsLoading(true);
         const [resMetrics, resAttributions] = await Promise.all([
           fetch(`/api/analytics?campaignId=${selectedCampaign}`),
           fetch(`/api/analytics/attributions?campaignId=${selectedCampaign}&search=${encodeURIComponent(search)}`),
@@ -57,6 +92,17 @@ function ClickAnalyticsContent() {
     }
     loadAnalytics();
   }, [selectedCampaign, search]);
+
+  const handleCampaignChange = (campaignId: string) => {
+    setSelectedCampaign(campaignId);
+    if (campaignId === "all") {
+      router.replace("/click-analytics");
+    } else {
+      router.replace(`/click-analytics?campaignId=${campaignId}`);
+    }
+  };
+
+  const currentCampaignObj = campaigns.find((c) => c._id === selectedCampaign);
 
   if (isLoading && !data) {
     return (
@@ -100,31 +146,93 @@ function ClickAnalyticsContent() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Header with Campaign Dropdown Selector */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">Click Analytics & Attribution</h1>
             <p className="text-xs text-slate-500 mt-1">
               Recipient-level click telemetry, engagement attribution, and conversion funnel analysis.
             </p>
           </div>
-          <a href="/api/exports/leads" download>
-            <Button variant="outline" size="md" className="gap-2">
-              <Download className="w-4 h-4" />
-              <span>Export Attribution CSV</span>
-            </Button>
-          </a>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Campaign Selector Dropdown */}
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-slate-200 rounded-xl shadow-2xs">
+              <Layers className="w-4 h-4 text-blue-600 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Campaign</span>
+                <select
+                  value={selectedCampaign}
+                  onChange={(e) => handleCampaignChange(e.target.value)}
+                  className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer pr-4"
+                >
+                  <option value="all">🌟 All Campaigns (Global Overview)</option>
+                  {campaigns.map((camp) => (
+                    <option key={camp._id} value={camp._id}>
+                      {camp.name} ({camp.recipientCount || 0} SMS) - {camp.status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedCampaign !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => handleCampaignChange("all")}
+                  className="text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-100 transition-colors ml-1"
+                  title="Reset to All Campaigns"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <a
+              href={
+                selectedCampaign !== "all"
+                  ? `/api/exports/campaigns/${selectedCampaign}`
+                  : "/api/exports/campaigns"
+              }
+              download
+            >
+              <Button variant="outline" size="md" className="gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Export CSV</span>
+              </Button>
+            </a>
+          </div>
         </div>
+
+        {/* Selected Campaign Indicator Banner */}
+        {selectedCampaign !== "all" && currentCampaignObj && (
+          <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs flex items-center justify-between text-blue-900">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Filtered by Campaign:</span>
+              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold font-mono text-[11px]">
+                {currentCampaignObj.name}
+              </span>
+              <span className="text-blue-600 text-[11px]">
+                (Sender ID: {currentCampaignObj.senderId} • {currentCampaignObj.recipientCount || 0} contacts)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCampaignChange("all")}
+              className="text-xs font-semibold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+            >
+              View All Campaigns
+            </button>
+          </div>
+        )}
 
         {/* 7 KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <StatCard title="SMS Sent" value={metrics.smsSent} icon={Send} iconBg="bg-slate-100" iconColor="text-slate-700" />
-          <StatCard title="Delivered" value={metrics.delivered} icon={CheckCircle2} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <StatCard title="Total Clicks" value={metrics.totalClicks} icon={MousePointerClick} iconBg="bg-purple-50" iconColor="text-purple-600" />
-          <StatCard title="Unique Clickers" value={metrics.uniqueClickers} icon={Users} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
+          <StatCard title="SMS Sent" value={formatNumber(metrics.smsSent)} icon={Send} iconBg="bg-slate-100" iconColor="text-slate-700" />
+          <StatCard title="Delivered" value={formatNumber(metrics.delivered)} icon={CheckCircle2} iconBg="bg-blue-50" iconColor="text-blue-600" />
+          <StatCard title="Total Clicks" value={formatNumber(metrics.totalClicks)} icon={MousePointerClick} iconBg="bg-purple-50" iconColor="text-purple-600" />
+          <StatCard title="Unique Clickers" value={formatNumber(metrics.uniqueClickers)} icon={Users} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
           <StatCard title="Click Rate" value={`${metrics.clickRate}%`} icon={Percent} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-          <StatCard title="Repeat Clickers" value={metrics.repeatClickers} icon={Repeat} iconBg="bg-purple-50" iconColor="text-purple-700" />
-          <StatCard title="High Intent" value={metrics.highIntentLeads} icon={Sparkles} iconBg="bg-emerald-50" iconColor="text-emerald-700" />
+          <StatCard title="Repeat Clickers" value={formatNumber(metrics.repeatClickers)} icon={Repeat} iconBg="bg-purple-50" iconColor="text-purple-700" />
+          <StatCard title="High Intent" value={formatNumber(metrics.highIntentLeads)} icon={Sparkles} iconBg="bg-emerald-50" iconColor="text-emerald-700" />
         </div>
 
         {/* Funnel + Engagement Trend */}
@@ -133,7 +241,11 @@ function ClickAnalyticsContent() {
             <CardHeader>
               <div>
                 <CardTitle>Click Trend Analysis</CardTitle>
-                <CardDescription>Daily link click volume breakdown</CardDescription>
+                <CardDescription>
+                  {selectedCampaign !== "all"
+                    ? `Daily link click volume breakdown for ${currentCampaignObj?.name || "selected campaign"}`
+                    : "Daily link click volume breakdown across all campaigns"}
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -192,7 +304,7 @@ function ClickAnalyticsContent() {
                 {attributions.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-8 text-center text-slate-400">
-                      No click interactions recorded yet.
+                      No click interactions recorded for this selection.
                     </td>
                   </tr>
                 ) : (
@@ -236,3 +348,4 @@ function ClickAnalyticsContent() {
     </AppLayout>
   );
 }
+

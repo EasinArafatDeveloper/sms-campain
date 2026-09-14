@@ -48,8 +48,13 @@ export class AnalyticsService {
 
     // Real click events for trend
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const clickMatch: any = { organizationId: orgObjId, clickedAt: { $gte: sevenDaysAgo } };
+    if (campaignId && campaignId !== "all") {
+      clickMatch.campaignId = new mongoose.Types.ObjectId(campaignId);
+    }
+
     const clickEvents = await ClickEventModel.aggregate([
-      { $match: { organizationId: orgObjId, clickedAt: { $gte: sevenDaysAgo } } },
+      { $match: clickMatch },
       {
         $group: {
           _id: { $dateToString: { format: "%b %d", date: "$clickedAt" } },
