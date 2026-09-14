@@ -56,7 +56,7 @@ function CreateCampaignForm() {
   );
   const [recipientCount, setRecipientCount] = useState(0);
   const [destinationUrl, setDestinationUrl] = useState("https://mybrand.com/offer");
-  const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("numeric");
+  const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("alphanumeric");
   const [trackingLength, setTrackingLength] = useState(6);
 
   // File Upload State
@@ -216,7 +216,16 @@ function CreateCampaignForm() {
   };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-  const sampleTrackingUrl = `${origin}/t/${trackingFormat === "numeric" ? "583214" : "A8K72P"}`;
+  const sampleTrackingId = React.useMemo(() => {
+    if (trackingFormat === "numeric") {
+      const digits = "583214976023";
+      return digits.slice(0, Math.max(4, Math.min(10, trackingLength)));
+    } else {
+      const chars = "A8K72P9MX4HQ";
+      return chars.slice(0, Math.max(4, Math.min(10, trackingLength)));
+    }
+  }, [trackingFormat, trackingLength]);
+  const sampleTrackingUrl = `${origin}/t/${sampleTrackingId}`;
   const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
 
   return (
@@ -601,44 +610,79 @@ function CreateCampaignForm() {
                 <p className="text-[11px] text-slate-400 mt-1">Users clicking the SMS short link will redirect here.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tracking ID Format</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setTrackingFormat("numeric")}
-                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
-                        trackingFormat === "numeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs"
-                          : "bg-white border-slate-200 text-slate-600"
+                      onClick={() => setTrackingFormat("alphanumeric")}
+                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                        trackingFormat === "alphanumeric"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs ring-2 ring-blue-500/20"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                       }`}
                     >
-                      Numeric (e.g. 583214)
+                      Alphanumeric (e.g. {"A8K72P9M".slice(0, trackingLength)})
                     </button>
                     <button
                       type="button"
-                      onClick={() => setTrackingFormat("alphanumeric")}
-                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
-                        trackingFormat === "alphanumeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs"
-                          : "bg-white border-slate-200 text-slate-600"
+                      onClick={() => setTrackingFormat("numeric")}
+                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                        trackingFormat === "numeric"
+                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs ring-2 ring-blue-500/20"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                       }`}
                     >
-                      Alphanumeric (e.g. A8K72P)
+                      Numeric (e.g. {"58321497".slice(0, trackingLength)})
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Character Length: {trackingLength}</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Character Length: <span className="text-blue-600 font-bold font-mono">{trackingLength} chars</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {trackingFormat === "alphanumeric"
+                        ? trackingLength === 4
+                          ? "~14.7M combinations"
+                          : trackingLength === 5
+                          ? "~916M combinations"
+                          : trackingLength === 6
+                          ? "~56.8B combinations"
+                          : trackingLength === 7
+                          ? "~3.5 Trillion"
+                          : "~218 Trillion"
+                        : `${Math.pow(10, trackingLength).toLocaleString()} combinations`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {[4, 5, 6, 7, 8].map((len) => (
+                      <button
+                        key={len}
+                        type="button"
+                        onClick={() => setTrackingLength(len)}
+                        className={`flex-1 py-1 text-xs font-semibold rounded-md border transition-all cursor-pointer ${
+                          trackingLength === len
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {len}
+                      </button>
+                    ))}
+                  </div>
+
                   <input
                     type="range"
                     min="4"
                     max="8"
                     value={trackingLength}
                     onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
-                    className="w-full mt-2"
+                    className="w-full accent-blue-600 cursor-pointer"
                   />
                 </div>
               </div>

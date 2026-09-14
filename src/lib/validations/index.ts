@@ -22,7 +22,7 @@ export const CreateCampaignSchema = z.object({
   audienceId: z.string().optional(),
   audienceName: z.string().optional(),
   destinationUrl: z.string().url("Valid destination URL required"),
-  trackingFormat: z.enum(["numeric", "alphanumeric"]).default("numeric"),
+  trackingFormat: z.enum(["numeric", "alphanumeric"]).default("alphanumeric"),
   trackingLength: z.number().min(4).max(12).default(6),
   scheduledAt: z.string().optional(),
   contacts: z
