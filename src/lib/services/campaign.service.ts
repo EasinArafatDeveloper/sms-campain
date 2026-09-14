@@ -23,6 +23,7 @@ export interface CreateCampaignDTO {
   trackingFormat?: "numeric" | "alphanumeric";
   trackingLength?: number;
   urlPrefix?: string;
+  linkStyle?: "hyphen" | "slash" | "direct";
   scheduledAt?: string;
   contacts?: { phone: string; name?: string; customId?: string }[];
 }
@@ -43,7 +44,9 @@ export class CampaignService {
 
     const format = data.trackingFormat || "alphanumeric";
     const length = data.trackingLength || 6;
-    const urlPrefix = (data.urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t";
+    const linkStyle = data.linkStyle || "hyphen";
+    const rawPrefix = (data.urlPrefix || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+    const urlPrefix = rawPrefix || (linkStyle === "direct" ? "" : "eid");
     const destUrl = data.destinationUrl.trim();
 
     // 1. Create Campaign Document
@@ -61,6 +64,7 @@ export class CampaignService {
         format,
         length,
         urlPrefix,
+        linkStyle,
       },
       scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
       createdBy: userObjId,
@@ -150,8 +154,19 @@ export class CampaignService {
 
       for (let i = 0; i < totalRecipients; i++) {
         const item = recipientsList[i];
-        const trackingId = trackingIds[i];
-        const uniqueUrl = `${appBaseUrl}/${urlPrefix}/${trackingId}`;
+        const rawCode = trackingIds[i];
+
+        let pathSegment = rawCode;
+        if (linkStyle === "hyphen" && urlPrefix) {
+          pathSegment = `${urlPrefix}-${rawCode}`;
+        } else if (linkStyle === "slash" && urlPrefix) {
+          pathSegment = `${urlPrefix}/${rawCode}`;
+        } else if (urlPrefix && linkStyle !== "direct") {
+          pathSegment = `${urlPrefix}-${rawCode}`;
+        }
+
+        const trackingId = pathSegment;
+        const uniqueUrl = `${appBaseUrl}/${pathSegment}`;
 
         const trackingLinkId = new mongoose.Types.ObjectId();
 

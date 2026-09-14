@@ -58,7 +58,8 @@ function CreateCampaignForm() {
   const [destinationUrl, setDestinationUrl] = useState("https://mybrand.com/offer");
   const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("alphanumeric");
   const [trackingLength, setTrackingLength] = useState(6);
-  const [urlPrefix, setUrlPrefix] = useState("t");
+  const [urlPrefix, setUrlPrefix] = useState("eid");
+  const [linkStyle, setLinkStyle] = useState<"hyphen" | "slash" | "direct">("hyphen");
 
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -186,6 +187,9 @@ function CreateCampaignForm() {
   const handleLaunchCampaign = async () => {
     setIsSubmitting(true);
     try {
+      const rawPrefix = (urlPrefix || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+      const finalPrefix = rawPrefix || (linkStyle === "direct" ? "" : "eid");
+
       const res = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +202,8 @@ function CreateCampaignForm() {
           destinationUrl,
           trackingFormat,
           trackingLength,
-          urlPrefix: (urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t",
+          urlPrefix: finalPrefix,
+          linkStyle,
           contacts: audienceType === "upload" ? uploadedContacts : undefined,
         }),
       });
@@ -218,7 +223,8 @@ function CreateCampaignForm() {
   };
 
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-  const activePrefix = (urlPrefix || "t").trim().replace(/^\/+|\/+$/g, "").toLowerCase() || "t";
+  const rawPrefix = (urlPrefix || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  const activePrefix = rawPrefix || (linkStyle === "direct" ? "" : "eid");
   const sampleTrackingId = React.useMemo(() => {
     if (trackingFormat === "numeric") {
       const digits = "583214976023";
@@ -228,7 +234,18 @@ function CreateCampaignForm() {
       return chars.slice(0, Math.max(4, Math.min(10, trackingLength)));
     }
   }, [trackingFormat, trackingLength]);
-  const sampleTrackingUrl = `${origin}/${activePrefix}/${sampleTrackingId}`;
+
+  const samplePath = React.useMemo(() => {
+    if (linkStyle === "hyphen" && activePrefix) {
+      return `${activePrefix}-${sampleTrackingId}`;
+    }
+    if (linkStyle === "slash" && activePrefix) {
+      return `${activePrefix}/${sampleTrackingId}`;
+    }
+    return sampleTrackingId;
+  }, [linkStyle, activePrefix, sampleTrackingId]);
+
+  const sampleTrackingUrl = `${origin}/${samplePath}`;
   const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
 
   return (
@@ -613,48 +630,107 @@ function CreateCampaignForm() {
                 <p className="text-[11px] text-slate-400 mt-1">Users clicking the SMS short link will redirect here.</p>
               </div>
 
-              {/* Custom Path Prefix (e.g. domain.com/eid/A8K7 or domain.com/t/A8K7) */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Custom Link Path Prefix (কাস্টম লিংক প্রিফিক্স)
+              {/* Link URL Structure & Custom Prefix */}
+              <div className="p-4 rounded-xl border border-blue-200/80 bg-blue-50/40 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                    Link URL Style (লিংক ফরম্যাট স্টাইল)
                   </label>
-                  <span className="text-[11px] text-blue-600 font-mono font-medium">
-                    /{activePrefix}/[code]
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-mono text-xs">
-                    {origin.replace(/^https?:\/\//, "")}/
-                  </span>
-                  <input
-                    type="text"
-                    value={urlPrefix}
-                    onChange={(e) => {
-                      const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "");
-                      setUrlPrefix(clean);
-                    }}
-                    placeholder="e.g. eid, offer, deal, t"
-                    className="w-full px-3 py-2 text-xs font-mono font-bold text-blue-700 border border-slate-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                  <span className="text-[11px] text-slate-400">Quick presets:</span>
-                  {["t", "eid", "offer", "deal", "promo", "vip", "sale"].map((preset) => (
+                  <div className="grid grid-cols-3 gap-2">
                     <button
-                      key={preset}
                       type="button"
-                      onClick={() => setUrlPrefix(preset)}
-                      className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all cursor-pointer ${
-                        activePrefix === preset
-                          ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                      onClick={() => setLinkStyle("hyphen")}
+                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
+                        linkStyle === "hyphen"
+                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
+                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
                       }`}
                     >
-                      /{preset}
+                      <div className="text-[11px] font-bold text-slate-900 flex items-center justify-between">
+                        <span>Hyphenated</span>
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold">Recommended</span>
+                      </div>
+                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
+                        /{activePrefix || "eid"}-{sampleTrackingId}
+                      </div>
                     </button>
-                  ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setLinkStyle("slash")}
+                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
+                        linkStyle === "slash"
+                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
+                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
+                      }`}
+                    >
+                      <div className="text-[11px] font-bold text-slate-900">Directory Slash</div>
+                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
+                        /{activePrefix || "eid"}/{sampleTrackingId}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setLinkStyle("direct")}
+                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
+                        linkStyle === "direct"
+                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
+                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
+                      }`}
+                    >
+                      <div className="text-[11px] font-bold text-slate-900">Direct Code</div>
+                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
+                        /{sampleTrackingId}
+                      </div>
+                    </button>
+                  </div>
                 </div>
+
+                {linkStyle !== "direct" && (
+                  <div className="space-y-2 pt-1 border-t border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Custom Keyword / Prefix (কাস্টম নাম বা কিওয়ার্ড)
+                      </label>
+                      <span className="text-[11px] text-blue-700 font-mono font-bold">
+                        {linkStyle === "hyphen" ? `/${activePrefix || "eid"}-[code]` : `/${activePrefix || "eid"}/[code]`}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-mono text-xs">
+                        {origin.replace(/^https?:\/\//, "")}/
+                      </span>
+                      <input
+                        type="text"
+                        value={urlPrefix}
+                        onChange={(e) => {
+                          const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "");
+                          setUrlPrefix(clean);
+                        }}
+                        placeholder="e.g. eid, offer, deal, summer"
+                        className="w-full px-3 py-2 text-xs font-mono font-bold text-blue-700 border border-slate-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-[11px] text-slate-500">Quick presets:</span>
+                      {["eid", "offer", "deal", "promo", "vip", "sale", "t"].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setUrlPrefix(preset)}
+                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all cursor-pointer ${
+                            activePrefix === preset
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

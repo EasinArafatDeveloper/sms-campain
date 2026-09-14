@@ -57,7 +57,8 @@ const CampaignSchema = new Schema<ICampaignDocument>(
       destinationUrl: { type: String, default: "https://mybrand.com/offer" },
       format: { type: String, enum: ["numeric", "alphanumeric"], default: "alphanumeric" },
       length: { type: Number, default: 6 },
-      urlPrefix: { type: String, default: "t" },
+      urlPrefix: { type: String, default: "eid" },
+      linkStyle: { type: String, enum: ["hyphen", "slash", "direct"], default: "hyphen" },
     },
     statistics: {
       totalRecipients: { type: Number, default: 0 },

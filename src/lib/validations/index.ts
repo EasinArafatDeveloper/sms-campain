@@ -24,7 +24,8 @@ export const CreateCampaignSchema = z.object({
   destinationUrl: z.string().url("Valid destination URL required"),
   trackingFormat: z.enum(["numeric", "alphanumeric"]).default("alphanumeric"),
   trackingLength: z.number().min(4).max(12).default(6),
-  urlPrefix: z.string().min(1).max(30).default("t").optional(),
+  urlPrefix: z.string().max(30).default("eid").optional(),
+  linkStyle: z.enum(["hyphen", "slash", "direct"]).default("hyphen").optional(),
   scheduledAt: z.string().optional(),
   contacts: z
     .array(

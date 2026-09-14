@@ -130,7 +130,17 @@ export class TrackingService {
   ): Promise<{ destinationUrl: string | null; campaignId?: string; recipientId?: string }> {
     await connectToDatabase();
 
-    const link = await TrackingLinkModel.findOne({ trackingId, status: "active" });
+    const cleanId = (trackingId || "").trim();
+    const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
+
+    const link = await TrackingLinkModel.findOne({
+      $or: [
+        { trackingId: cleanId },
+        { trackingId: subId },
+        { uniqueUrl: { $regex: new RegExp(`/${cleanId}$`, "i") } },
+      ],
+      status: "active",
+    });
     if (!link) {
       return { destinationUrl: null };
     }

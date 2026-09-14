@@ -66,6 +66,7 @@ export interface ICampaign {
     format: TrackingFormat;
     length: number;
     urlPrefix?: string;
+    linkStyle?: "hyphen" | "slash" | "direct";
   };
   statistics: {
     totalRecipients: number;
