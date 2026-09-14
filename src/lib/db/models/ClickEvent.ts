@@ -18,6 +18,7 @@ export interface IClickEventDocument extends Document {
     screenHeight?: number;
     hasTouch?: boolean;
     renderTimeMs?: number;
+    verifiedAt?: Date;
   };
   metadata?: Record<string, unknown>;
 }

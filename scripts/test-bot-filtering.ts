@@ -185,30 +185,19 @@ async function runBotTestSimulation() {
       // Give async DB recording 200ms to settle
       await new Promise((r) => setTimeout(r, 200));
 
-      if (s.clientMeta) {
+      if (s.clientMeta && clickResult.verifyToken) {
         console.log(`  📲 Browser Executing JavaScript Touchpoint Beacon...`);
         console.log(`     - Screen Dimension : ${s.clientMeta.screenWidth} x ${s.clientMeta.screenHeight} px`);
         console.log(`     - Touch Support    : ${s.clientMeta.hasTouch ? "YES (Mobile Touchscreen)" : "NO (Mouse / Desktop)"}`);
         console.log(`     - Render Latency   : ${s.clientMeta.renderTimeMs} ms`);
 
-        // Real human touchpoint verification update
-        await ClickEventModel.findOneAndUpdate(
-          { trackingId: testTrackingId, isBot: false },
-          {
-            $set: {
-              isHumanVerified: true,
-              clientMeta: {
-                screenWidth: s.clientMeta.screenWidth,
-                screenHeight: s.clientMeta.screenHeight,
-                hasTouch: s.clientMeta.hasTouch,
-                renderTimeMs: s.clientMeta.renderTimeMs,
-                verifiedAt: new Date(),
-              },
-            },
-          },
-          { sort: { clickedAt: -1 } }
+        // Real human touchpoint verification update via production method
+        const verRes = await TrackingService.recordVerifiedHumanClick(
+          clickResult.verifyToken,
+          testTrackingId,
+          s.clientMeta
         );
-        console.log(`  ✅ HUMAN CONFIRMED   : Verified human telemetry stored in DB!`);
+        console.log(`  ✅ HUMAN CONFIRMED   : Verified=${verRes.verified}, Telemetry stored in DB!`);
       }
 
       // Wait 2.1s before next human click to test debounce cleanly

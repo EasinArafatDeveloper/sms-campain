@@ -136,7 +136,9 @@ export class TrackingService {
       { pattern: "yandex", name: "Yandex Bot" },
       { pattern: "bytespider", name: "ByteSpider" },
       { pattern: "petalbot", name: "PetalBot" },
+      { pattern: "x11; linux x86_64", name: "Cloud Headless Crawler (Linux)" },
       { pattern: "headlesschrome", name: "Headless Chrome" },
+      { pattern: "headless", name: "Headless Browser Scanner" },
       { pattern: "phantomjs", name: "PhantomJS" },
       { pattern: "lighthouse", name: "Lighthouse Audit" },
       { pattern: "curl", name: "cURL" },
@@ -159,7 +161,7 @@ export class TrackingService {
     }
 
     // Check for general bot/spider keywords in user agent
-    if (ua.includes("bot") || ua.includes("spider") || ua.includes("crawler") || ua.includes("preview")) {
+    if (ua.includes("bot") || ua.includes("spider") || ua.includes("crawler") || ua.includes("preview") || ua.includes("scanner")) {
       return { isBot: true, reason: "generic_crawler_keyword" };
     }
 
@@ -252,8 +254,8 @@ export class TrackingService {
   }
 
   /**
-   * Resolves a tracking ID, classifies bot vs human, logs click telemetry asynchronously,
-   * and returns destination URL and trampoline HTML.
+   * Resolves a tracking ID, classifies bot vs candidate human,
+   * logs pending telemetry asynchronously, and returns destination URL / trampoline HTML.
    */
   static async resolveAndTrackClick(
     trackingId: string,
@@ -275,6 +277,7 @@ export class TrackingService {
     isBot: boolean;
     botReason?: string;
     trampolineHtml?: string;
+    verifyToken?: string;
   }> {
     await connectToDatabase();
 
@@ -298,7 +301,6 @@ export class TrackingService {
     }
 
     const now = new Date();
-    const orgId = link.organizationId.toString();
     const campId = link.campaignId.toString();
     const recipId = link.recipientId.toString();
 
@@ -310,11 +312,7 @@ export class TrackingService {
     // Generate cryptographic verification token for candidate human click
     const verifyToken = crypto.randomBytes(16).toString("hex");
 
-    // 2. Debounce: If link was clicked less than 2 seconds ago (rapid double-tap), avoid double counting
-    const isRapidDuplicate =
-      !isBot && link.lastClickedAt && now.getTime() - new Date(link.lastClickedAt).getTime() < 2000;
-
-    // Fire background updates without blocking redirect
+    // Fire background logging without blocking redirect
     (async () => {
       try {
         const ipHash = metadata?.ip
@@ -347,11 +345,7 @@ export class TrackingService {
           return;
         }
 
-        if (isRapidDuplicate) {
-          return;
-        }
-
-        // 1. Create Human Click Event
+        // Candidate human browser: Log as pending verification (DO NOT increment human metrics until JS beacon executes)
         await ClickEventModel.create({
           organizationId: link.organizationId,
           campaignId: link.campaignId,
@@ -363,55 +357,12 @@ export class TrackingService {
           userAgent: metadata?.userAgent,
           referer: metadata?.referer,
           isBot: false,
-          botReason: "real_browser",
-          isHumanVerified: true,
+          botReason: "pending_human_verification",
+          isHumanVerified: false,
           metadata: { verifyToken },
         });
-
-        // 2. Update TrackingLink click count & times
-        const isFirstClick = !link.firstClickedAt;
-        await TrackingLinkModel.updateOne(
-          { _id: link._id },
-          {
-            $inc: { clickCount: 1 },
-            $set: {
-              lastClickedAt: now,
-              ...(isFirstClick ? { firstClickedAt: now } : {}),
-            },
-          }
-        );
-
-        // 3. Update CampaignRecipient status
-        await CampaignRecipientModel.updateOne(
-          {
-            organizationId: link.organizationId,
-            campaignId: link.campaignId,
-            recipientId: link.recipientId,
-          },
-          {
-            $set: {
-              clickStatus: "clicked",
-              lastClickedAt: now,
-              ...(isFirstClick ? { firstClickedAt: now } : {}),
-            },
-            $inc: { clickCount: 1 },
-          }
-        );
-
-        // 4. Update Campaign statistics
-        const incQuery: any = {
-          "statistics.totalClicks": 1,
-        };
-        if (isFirstClick) {
-          incQuery["statistics.uniqueClickers"] = 1;
-        }
-
-        await CampaignModel.updateOne({ _id: link.campaignId }, { $inc: incQuery });
-
-        // 5. Update Recipient Engagement Profile & Lead Status
-        await EngagementService.recordRecipientClick(orgId, recipId, campId, now);
       } catch (err) {
-        console.error("[TrackingService] Error recording click telemetry:", err);
+        console.error("[TrackingService] Error logging candidate click:", err);
       }
     })();
 
@@ -426,6 +377,132 @@ export class TrackingService {
       isBot,
       botReason,
       trampolineHtml,
+      verifyToken,
     };
+  }
+
+  /**
+   * Finalizes a verified human click after client-side JavaScript beacon execution.
+   */
+  static async recordVerifiedHumanClick(
+    token?: string,
+    trackingId?: string,
+    clientMeta?: {
+      screenWidth?: number;
+      screenHeight?: number;
+      hasTouch?: boolean;
+      renderTimeMs?: number;
+    }
+  ): Promise<{ success: boolean; verified: boolean }> {
+    await connectToDatabase();
+
+    const query: any = {};
+    if (token) {
+      query["metadata.verifyToken"] = token;
+    } else if (trackingId) {
+      query.trackingId = trackingId;
+    } else {
+      return { success: false, verified: false };
+    }
+
+    // Find the most recent pending candidate click event
+    const event = await ClickEventModel.findOne(query).sort({ clickedAt: -1 });
+    if (!event) {
+      return { success: false, verified: false };
+    }
+
+    // If already verified, do not duplicate count
+    if (event.isHumanVerified) {
+      return { success: true, verified: true };
+    }
+
+    const now = new Date();
+
+    // 1. Mark event as fully human verified with telemetry
+    event.isHumanVerified = true;
+    event.isBot = false;
+    event.botReason = "real_browser";
+    event.clientMeta = {
+      screenWidth: Number(clientMeta?.screenWidth) || 0,
+      screenHeight: Number(clientMeta?.screenHeight) || 0,
+      hasTouch: Boolean(clientMeta?.hasTouch),
+      renderTimeMs: Number(clientMeta?.renderTimeMs) || 0,
+      verifiedAt: now,
+    };
+    await event.save();
+
+    // 2. Fetch the tracking link
+    const cleanId = event.trackingId;
+    const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
+
+    const link = await TrackingLinkModel.findOne({
+      $or: [
+        { trackingId: cleanId },
+        { trackingId: cleanId.toLowerCase() },
+        { trackingId: subId },
+        { trackingId: subId.toLowerCase() },
+        { uniqueUrl: { $regex: new RegExp(`/${cleanId}$`, "i") } },
+      ],
+    });
+
+    if (!link) {
+      return { success: true, verified: true };
+    }
+
+    // Debounce: Avoid double-counting if verified click happened < 2s ago
+    const isRapidDuplicate =
+      link.lastClickedAt && now.getTime() - new Date(link.lastClickedAt).getTime() < 2000;
+    if (isRapidDuplicate) {
+      return { success: true, verified: true };
+    }
+
+    const isFirstClick = !link.firstClickedAt;
+    const orgId = link.organizationId.toString();
+    const campId = link.campaignId.toString();
+    const recipId = link.recipientId.toString();
+
+    // 3. Update TrackingLink click count & times
+    await TrackingLinkModel.updateOne(
+      { _id: link._id },
+      {
+        $inc: { clickCount: 1 },
+        $set: {
+          lastClickedAt: now,
+          ...(isFirstClick ? { firstClickedAt: now } : {}),
+        },
+      }
+    );
+
+    // 4. Update CampaignRecipient status
+    await CampaignRecipientModel.updateOne(
+      {
+        organizationId: link.organizationId,
+        campaignId: link.campaignId,
+        recipientId: link.recipientId,
+      },
+      {
+        $set: {
+          clickStatus: "clicked",
+          lastClickedAt: now,
+          ...(isFirstClick ? { firstClickedAt: now } : {}),
+        },
+        $inc: { clickCount: 1 },
+      }
+    );
+
+    // 5. Update Campaign statistics
+    const incQuery: any = {
+      "statistics.totalClicks": 1,
+    };
+    if (isFirstClick) {
+      incQuery["statistics.uniqueClickers"] = 1;
+    }
+
+    await CampaignModel.updateOne({ _id: link.campaignId }, { $inc: incQuery });
+
+    // 6. Update Recipient Engagement Profile & Lead Status
+    await EngagementService.recordRecipientClick(orgId, recipId, campId, now);
+
+    return { success: true, verified: true };
   }
 }
