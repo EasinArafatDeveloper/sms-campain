@@ -18,7 +18,7 @@ export const CreateCampaignSchema = z.object({
   message: z.string().min(1, "Message cannot be empty").refine((val) => val.includes("{TRACKABLE_LINK}"), {
     message: "Message must contain the {TRACKABLE_LINK} merge tag",
   }),
-  audienceType: z.enum(["upload", "existing", "crm", "segment", "retargeting"]),
+  audienceType: z.enum(["upload", "manual", "paste", "existing", "crm", "segment", "retargeting"]),
   audienceId: z.string().optional(),
   audienceName: z.string().optional(),
   destinationUrl: z.string().url("Valid destination URL required"),

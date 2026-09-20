@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { calculateSmsSegments, formatNumber } from "@/lib/utils";
+import { calculateSmsSegments, formatNumber, normalizePhoneNumber } from "@/lib/utils";
 import {
   Send,
   Users,
@@ -22,6 +22,10 @@ import {
   Download,
   Trash2,
   Check,
+  ClipboardList,
+  Copy,
+  CheckCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export default function CreateCampaignPage() {
@@ -48,7 +52,7 @@ function CreateCampaignForm() {
   const [message, setMessage] = useState(
     "Special offer is live! Get 20% discount today. Click here: {TRACKABLE_LINK}"
   );
-  const [audienceType, setAudienceType] = useState<"existing" | "upload" | "segment">(
+  const [audienceType, setAudienceType] = useState<"existing" | "upload" | "paste" | "segment">(
     isRetargeting ? "segment" : "upload"
   );
   const [audienceName, setAudienceName] = useState(
@@ -67,6 +71,16 @@ function CreateCampaignForm() {
   const [uploadedContacts, setUploadedContacts] = useState<{ phone: string; name?: string; customId?: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Copy-Paste Numbers State
+  const [pastedText, setPastedText] = useState("");
+  const [pastedStats, setPastedStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number }>({
+    total: 0,
+    valid: 0,
+    duplicates: 0,
+    invalid: 0,
+  });
+  const [copiedNotification, setCopiedNotification] = useState(false);
 
   const smsStats = calculateSmsSegments(message);
 
@@ -133,6 +147,117 @@ function CreateCampaignForm() {
     setUploadedContacts(parsed);
     setRecipientCount(parsed.length);
     setAudienceName(`${filename} (${parsed.length} contacts)`);
+  };
+
+  const handlePasteParse = (text: string) => {
+    setPastedText(text);
+    setUploadError(null);
+
+    if (!text.trim()) {
+      setUploadedContacts([]);
+      setRecipientCount(0);
+      setPastedStats({ total: 0, valid: 0, duplicates: 0, invalid: 0 });
+      setAudienceName("Pasted Contact List");
+      return;
+    }
+
+    const rawItems = text.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+    let totalProcessed = 0;
+    let validCount = 0;
+    let duplicateCount = 0;
+    let invalidCount = 0;
+
+    const parsed: { phone: string; name?: string; customId?: string }[] = [];
+    const seenPhones = new Set<string>();
+
+    for (const line of rawItems) {
+      const cols = line.split(/[,\t;|]/).map((c) => c.trim().replace(/^["']|["']$/g, ""));
+
+      // If line is multiple inline comma-separated numbers (e.g. 01711111111, 01822222222, 01933333333)
+      if (cols.length > 1 && cols.every((c) => /^[+0-9\s-]{7,}$/.test(c))) {
+        for (const num of cols) {
+          totalProcessed++;
+          const { normalized, isValid } = normalizePhoneNumber(num);
+          if (isValid) {
+            if (seenPhones.has(normalized)) {
+              duplicateCount++;
+            } else {
+              seenPhones.add(normalized);
+              parsed.push({ phone: normalized });
+              validCount++;
+            }
+          } else {
+            invalidCount++;
+          }
+        }
+        continue;
+      }
+
+      totalProcessed++;
+      const rawPhone = cols[0];
+      const name = cols[1] && isNaN(Number(cols[1])) ? cols[1] : undefined;
+      const customId = cols[2] || undefined;
+
+      const { normalized, isValid } = normalizePhoneNumber(rawPhone);
+      if (isValid) {
+        if (seenPhones.has(normalized)) {
+          duplicateCount++;
+        } else {
+          seenPhones.add(normalized);
+          parsed.push({ phone: normalized, name, customId });
+          validCount++;
+        }
+      } else {
+        invalidCount++;
+      }
+    }
+
+    setUploadedContacts(parsed);
+    setRecipientCount(parsed.length);
+    setPastedStats({
+      total: totalProcessed,
+      valid: validCount,
+      duplicates: duplicateCount,
+      invalid: invalidCount,
+    });
+    setAudienceName(`Pasted Contact List (${parsed.length} contacts)`);
+
+    if (parsed.length === 0 && totalProcessed > 0) {
+      setUploadError("No valid phone numbers detected. Enter numbers like 017XXXXXXXX, 88018XXXXXXXX, or +88019XXXXXXXX.");
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (navigator.clipboard) {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          handlePasteParse(text);
+          setCopiedNotification(true);
+          setTimeout(() => setCopiedNotification(false), 2500);
+        }
+      }
+    } catch (err) {
+      console.warn("Clipboard access denied or unavailable", err);
+    }
+  };
+
+  const handleLoadSampleNumbers = () => {
+    const sample = `01711234567, Rahim Ahmed, USR-101
+8801812345678, Karim Uddin, USR-102
++8801912345679, Farhana Islam, USR-103
+01612345670, Tanvir Hasan, USR-104
+01512345671, Nusrat Jahan, USR-105`;
+    handlePasteParse(sample);
+  };
+
+  const handleClearPasted = () => {
+    setPastedText("");
+    setUploadedContacts([]);
+    setRecipientCount(0);
+    setPastedStats({ total: 0, valid: 0, duplicates: 0, invalid: 0 });
+    setAudienceName("Pasted Contact List");
+    setUploadError(null);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +329,7 @@ function CreateCampaignForm() {
           trackingLength,
           urlPrefix: finalPrefix,
           linkStyle,
-          contacts: audienceType === "upload" ? uploadedContacts : undefined,
+          contacts: (audienceType === "upload" || audienceType === "paste") ? uploadedContacts : undefined,
         }),
       });
 
@@ -399,25 +524,43 @@ function CreateCampaignForm() {
           <Card>
             <CardHeader>
               <CardTitle>Step 2: Audience Selection</CardTitle>
-              <CardDescription>Select target contact list, upload spreadsheet, or choose an audience segment</CardDescription>
+              <CardDescription>Upload contact spreadsheet, directly copy-paste numbers, or target existing audience</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Audience Type Selection Tabs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div
                   onClick={() => {
                     setAudienceType("upload");
-                    setAudienceName(uploadedContacts.length > 0 ? `${uploadedFile?.name || "Uploaded List"} (${uploadedContacts.length} contacts)` : "CSV Upload Contact List");
-                    setRecipientCount(uploadedContacts.length);
+                    setAudienceName(uploadedContacts.length > 0 && uploadedFile ? `${uploadedFile.name} (${uploadedContacts.length} contacts)` : "CSV Upload Contact List");
+                    setRecipientCount(uploadedFile ? uploadedContacts.length : 0);
                   }}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                     audienceType === "upload"
                       ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
                 >
                   <UploadCloud className="w-5 h-5 text-blue-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">Upload CSV / XLSX</div>
-                  <div className="text-[11px] text-slate-500 mt-1">Import phone contacts from file</div>
+                  <div className="font-semibold text-xs text-slate-900">Upload File</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">CSV, XLSX, TXT spreadsheet</div>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setAudienceType("paste");
+                    setAudienceName(pastedStats.valid > 0 ? `Pasted Contact List (${pastedStats.valid} contacts)` : "Pasted Contact List");
+                    setRecipientCount(pastedStats.valid);
+                  }}
+                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    audienceType === "paste"
+                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <ClipboardList className="w-5 h-5 text-indigo-600 mb-2" />
+                  <div className="font-semibold text-xs text-slate-900">Copy & Paste</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Paste numbers directly</div>
                 </div>
 
                 <div
@@ -426,15 +569,15 @@ function CreateCampaignForm() {
                     setAudienceName("Saved Database Contacts");
                     setRecipientCount(100);
                   }}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                     audienceType === "existing"
                       ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
                 >
                   <Users className="w-5 h-5 text-slate-600 mb-2" />
                   <div className="font-semibold text-xs text-slate-900">Existing Audience</div>
-                  <div className="text-[11px] text-slate-500 mt-1">Target saved database contacts</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Saved database contacts</div>
                 </div>
 
                 <div
@@ -443,19 +586,19 @@ function CreateCampaignForm() {
                     setAudienceName("High-Intent Leads Segment");
                     setRecipientCount(50);
                   }}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                     audienceType === "segment"
                       ? "border-purple-500 bg-purple-50/50 shadow-xs ring-2 ring-purple-500/20"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
                 >
                   <Sparkles className="w-5 h-5 text-purple-600 mb-2" />
                   <div className="font-semibold text-xs text-slate-900">High-Intent Leads</div>
-                  <div className="text-[11px] text-slate-500 mt-1">Multi-click engaged recipients</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Multi-click retargeting</div>
                 </div>
               </div>
 
-              {/* CSV Upload Dropzone */}
+              {/* Option 1: CSV / XLSX File Upload */}
               {audienceType === "upload" && (
                 <div className="space-y-3">
                   <input
@@ -466,7 +609,7 @@ function CreateCampaignForm() {
                     onChange={handleFileUpload}
                   />
 
-                  {uploadedContacts.length === 0 ? (
+                  {uploadedContacts.length === 0 || !uploadedFile ? (
                     <div
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -589,6 +732,144 @@ function CreateCampaignForm() {
                 </div>
               )}
 
+              {/* Option 2: Copy & Paste Phone Numbers */}
+              {audienceType === "paste" && (
+                <div className="p-4.5 rounded-xl border border-indigo-200/80 bg-gradient-to-b from-indigo-50/40 to-white space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-indigo-100">
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <ClipboardList className="w-4 h-4 text-indigo-600" />
+                        <span>Direct Copy & Paste Numbers (নাম্বার কপি ও পেস্ট করুন)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Paste numbers separated by newline, comma, or space. Optional: <code>017XXXXXXXX, Name, ID</code>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePasteFromClipboard}
+                        className="text-[11px] h-7 px-2.5 bg-white border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-semibold gap-1 shadow-2xs"
+                      >
+                        {copiedNotification ? (
+                          <>
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Pasted!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>Paste from Clipboard</span>
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleLoadSampleNumbers}
+                        className="text-[11px] h-7 px-2.5 text-slate-600 hover:text-indigo-600 font-medium gap-1"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Sample Numbers</span>
+                      </Button>
+
+                      {pastedText && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearPasted}
+                          className="text-[11px] h-7 px-2 text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-0.5" />
+                          <span>Clear</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Textarea Input */}
+                  <div>
+                    <textarea
+                      rows={6}
+                      value={pastedText}
+                      onChange={(e) => handlePasteParse(e.target.value)}
+                      placeholder={`01711234567\n8801812345678, Rahim Ahmed\n+8801912345679, Farhana Islam, USR-101\n01612345670\n01512345671`}
+                      className="w-full p-3.5 text-xs font-mono border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-inner leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Live Parsing Metrics & Badges */}
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs bg-indigo-50/60 p-2.5 rounded-lg border border-indigo-100">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1 font-semibold text-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <strong>{formatNumber(pastedStats.valid)}</strong> Valid Numbers
+                      </span>
+                      {pastedStats.duplicates > 0 && (
+                        <span className="flex items-center gap-1 font-medium text-amber-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          {formatNumber(pastedStats.duplicates)} Duplicates Removed
+                        </span>
+                      )}
+                      {pastedStats.invalid > 0 && (
+                        <span className="flex items-center gap-1 font-medium text-rose-700">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {formatNumber(pastedStats.invalid)} Invalid Formats
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-indigo-700 font-medium">
+                      Auto-Normalizes <code>017...</code> → <code>88017...</code>
+                    </div>
+                  </div>
+
+                  {/* Preview Table of Pasted Contacts */}
+                  {uploadedContacts.length > 0 && (
+                    <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden text-xs shadow-2xs">
+                      <div className="px-3 py-1.5 bg-slate-50 font-semibold text-slate-700 border-b border-slate-100 text-[11px] flex items-center justify-between">
+                        <span>Preview of Pasted Contacts (Showing first 5 of {uploadedContacts.length}):</span>
+                        <span className="text-[10px] text-emerald-600 font-bold">✓ Ready for Campaign</span>
+                      </div>
+                      <table className="w-full text-left">
+                        <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/50 border-b border-slate-100">
+                          <tr>
+                            <th className="px-3 py-1.5">#</th>
+                            <th className="px-3 py-1.5">Normalized Phone</th>
+                            <th className="px-3 py-1.5">Contact Name</th>
+                            <th className="px-3 py-1.5">Custom ID</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                          {uploadedContacts.slice(0, 5).map((c, i) => (
+                            <tr key={i} className="hover:bg-indigo-50/30">
+                              <td className="px-3 py-1.5 font-sans text-slate-400">{i + 1}</td>
+                              <td className="px-3 py-1.5 font-semibold text-indigo-900">{c.phone}</td>
+                              <td className="px-3 py-1.5 font-sans text-slate-600">{c.name || "-"}</td>
+                              <td className="px-3 py-1.5 text-slate-500">{c.customId || "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Audience Summary Banner */}
               <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
                 <div>
                   <span className="font-semibold text-blue-900">Selected Audience:</span> {audienceName}
@@ -602,7 +883,10 @@ function CreateCampaignForm() {
               </Button>
               <Button
                 onClick={() => setStep(3)}
-                disabled={audienceType === "upload" && uploadedContacts.length === 0}
+                disabled={
+                  (audienceType === "upload" && uploadedContacts.length === 0) ||
+                  (audienceType === "paste" && uploadedContacts.length === 0)
+                }
               >
                 Next: Tracking Link Config <ArrowRight className="w-4 h-4 ml-1" />
               </Button>

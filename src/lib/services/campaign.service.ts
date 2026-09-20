@@ -17,7 +17,7 @@ export interface CreateCampaignDTO {
   name: string;
   senderId: string;
   message: string;
-  audienceType: "upload" | "existing" | "crm" | "segment" | "retargeting";
+  audienceType: "upload" | "manual" | "paste" | "existing" | "crm" | "segment" | "retargeting";
   audienceId?: string;
   audienceName?: string;
   destinationUrl: string;
