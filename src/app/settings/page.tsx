@@ -367,7 +367,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="range"
-                  min="4"
+                  min="3"
                   max="8"
                   value={trackingLength}
                   onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}

@@ -384,10 +384,10 @@ function CreateCampaignForm() {
   const sampleTrackingId = React.useMemo(() => {
     if (trackingFormat === "numeric") {
       const digits = "583214976023";
-      return digits.slice(0, Math.max(4, Math.min(10, trackingLength)));
+      return digits.slice(0, Math.max(3, Math.min(10, trackingLength)));
     } else {
       const chars = "a8k72p9mx4hq";
-      return chars.slice(0, Math.max(4, Math.min(10, trackingLength)));
+      return chars.slice(0, Math.max(3, Math.min(10, trackingLength)));
     }
   }, [trackingFormat, trackingLength]);
 
@@ -1103,7 +1103,9 @@ function CreateCampaignForm() {
                     </label>
                     <span className="text-[10px] text-slate-400 font-medium">
                       {trackingFormat === "alphanumeric"
-                        ? trackingLength === 4
+                        ? trackingLength === 3
+                          ? "~29.7K combinations"
+                          : trackingLength === 4
                           ? "~14.7M combinations"
                           : trackingLength === 5
                           ? "~916M combinations"
@@ -1117,7 +1119,7 @@ function CreateCampaignForm() {
                   </div>
 
                   <div className="flex items-center gap-1.5 mb-2">
-                    {[4, 5, 6, 7, 8].map((len) => (
+                    {[3, 4, 5, 6, 7, 8].map((len) => (
                       <button
                         key={len}
                         type="button"
@@ -1135,7 +1137,7 @@ function CreateCampaignForm() {
 
                   <input
                     type="range"
-                    min="4"
+                    min="3"
                     max="8"
                     value={trackingLength}
                     onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
