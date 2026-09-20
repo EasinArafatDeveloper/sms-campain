@@ -183,8 +183,8 @@ export class CampaignService {
           clickCount: 0,
         });
 
-        // Replace merge tag {TRACKABLE_LINK}
-        const personalizedMessage = data.message.replace(/\{TRACKABLE_LINK\}/gi, uniqueUrl);
+        // Replace merge tag {TRACKABLE_LINK} or {link} or {url} anywhere in the message
+        const personalizedMessage = data.message.replace(/\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/gi, uniqueUrl);
 
         campaignRecipientsToInsert.push({
           organizationId: orgObjId,

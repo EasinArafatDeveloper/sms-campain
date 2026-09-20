@@ -12,11 +12,13 @@ export const RegisterSchema = z.object({
   organizationName: z.string().min(2, "Organization name must be at least 2 characters"),
 });
 
+export const LINK_MERGE_TAG_REGEX = /\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/i;
+
 export const CreateCampaignSchema = z.object({
   name: z.string().min(2, "Campaign name is required"),
   senderId: z.string().min(2, "Sender ID is required"),
-  message: z.string().min(1, "Message cannot be empty").refine((val) => val.includes("{TRACKABLE_LINK}"), {
-    message: "Message must contain the {TRACKABLE_LINK} merge tag",
+  message: z.string().min(1, "Message cannot be empty").refine((val) => LINK_MERGE_TAG_REGEX.test(val), {
+    message: "Message must contain a trackable link merge tag (e.g. {TRACKABLE_LINK} or {link})",
   }),
   audienceType: z.enum(["upload", "manual", "paste", "existing", "crm", "segment", "retargeting"]),
   audienceId: z.string().optional(),

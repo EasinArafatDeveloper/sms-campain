@@ -65,6 +65,9 @@ function CreateCampaignForm() {
   const [urlPrefix, setUrlPrefix] = useState("eid");
   const [linkStyle, setLinkStyle] = useState<"hyphen" | "slash" | "direct">("hyphen");
 
+  // Message & Ref State
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -83,6 +86,34 @@ function CreateCampaignForm() {
   const [copiedNotification, setCopiedNotification] = useState(false);
 
   const smsStats = calculateSmsSegments(message);
+
+  const handleInsertMergeTag = (tag: string = "{TRACKABLE_LINK}") => {
+    const textarea = messageTextareaRef.current;
+    if (!textarea) {
+      setMessage((prev) => `${prev} ${tag}`);
+      return;
+    }
+
+    const start = textarea.selectionStart ?? message.length;
+    const end = textarea.selectionEnd ?? message.length;
+    const before = message.substring(0, start);
+    const after = message.substring(end);
+
+    // Ensure sensible spacing before and after the tag
+    const needsSpaceBefore = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+    const needsSpaceAfter = after.length > 0 && !after.startsWith(" ") && !after.startsWith("\n");
+    const insertion = `${needsSpaceBefore ? " " : ""}${tag}${needsSpaceAfter ? " " : ""}`;
+
+    const newMessage = before + insertion + after;
+    setMessage(newMessage);
+
+    // Restore cursor position right after the inserted tag
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + insertion.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 50);
+  };
 
   const parseContactText = (text: string, filename: string = "contacts.csv") => {
     setUploadError(null);
@@ -371,7 +402,8 @@ function CreateCampaignForm() {
   }, [linkStyle, activePrefix, sampleTrackingId]);
 
   const sampleTrackingUrl = `${origin}/${samplePath}`;
-  const sampleMessage = message.replace(/\{TRACKABLE_LINK\}/gi, sampleTrackingUrl);
+  const sampleMessage = message.replace(/\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/gi, sampleTrackingUrl);
+  const hasLinkTag = /\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/i.test(message);
 
   return (
     <AppLayout>
@@ -468,26 +500,44 @@ function CreateCampaignForm() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">SMS Message</label>
-                  <button
-                    type="button"
-                    onClick={() => setMessage((prev) => `${prev} {TRACKABLE_LINK}`)}
-                    className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1"
-                  >
-                    + Insert &#123;TRACKABLE_LINK&#125;
-                  </button>
+                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">SMS Message Copy</label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 hidden sm:inline">Insert at cursor:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertMergeTag("{TRACKABLE_LINK}")}
+                      className="text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Link2 className="w-3 h-3" /> &#123;TRACKABLE_LINK&#125;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertMergeTag("{link}")}
+                      className="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold px-2 py-0.5 rounded border border-indigo-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Link2 className="w-3 h-3" /> &#123;link&#125;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertMergeTag("{name}")}
+                      className="text-[11px] bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Users className="w-3 h-3" /> &#123;name&#125;
+                    </button>
+                  </div>
                 </div>
                 <textarea
+                  ref={messageTextareaRef}
                   rows={4}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   className="w-full p-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  placeholder="Type message here... Include {TRACKABLE_LINK}"
+                  placeholder="Type message here... e.g. 2026 new offer unlock {link} end date offer 12 march"
                 />
 
                 {/* SMS Segmentation Bar */}
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex-wrap gap-2">
                   <div className="flex items-center gap-4">
                     <span>
                       Characters: <strong className="text-slate-900">{smsStats.characters}</strong>
@@ -499,20 +549,20 @@ function CreateCampaignForm() {
                       Encoding: <strong>{smsStats.isUnicode ? "Unicode" : "GSM-7 (Standard)"}</strong>
                     </span>
                   </div>
-                  {message.includes("{TRACKABLE_LINK}") ? (
+                  {hasLinkTag ? (
                     <span className="text-emerald-600 font-medium flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Merge tag included
                     </span>
                   ) : (
                     <span className="text-amber-600 font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" /> Missing &#123;TRACKABLE_LINK&#125;
+                      <AlertCircle className="w-3.5 h-3.5" /> Missing link merge tag &#123;link&#125; or &#123;TRACKABLE_LINK&#125;
                     </span>
                   )}
                 </div>
               </div>
             </CardContent>
             <CardFooter className="justify-end">
-              <Button onClick={() => setStep(2)} disabled={!name || !message.includes("{TRACKABLE_LINK}")}>
+              <Button onClick={() => setStep(2)} disabled={!name || !hasLinkTag}>
                 Next: Audience Selection <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </CardFooter>
