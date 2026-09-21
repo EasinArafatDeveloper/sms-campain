@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +17,8 @@ import {
   Key,
   Globe,
   RotateCw,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 
@@ -207,7 +210,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
                 {/* Account Balance / Credits Display */}
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 rounded-xl border border-blue-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 rounded-xl border border-blue-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <span className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
                       {balance !== null ? "Custom ZendSMS API Balance" : "Workspace SMS Credits"}
@@ -231,27 +234,37 @@ export default function SettingsPage() {
                         : "Managed via SMSPro Central Gateway (1 Credit = 1 SMS)."}
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      setIsCheckingBalance(true);
-                      try {
-                        const res = await fetch("/api/settings");
-                        const json = await res.json();
-                        if (typeof json.balance !== "undefined") setBalance(json.balance);
-                        if (typeof json.smsCredits !== "undefined") setSmsCredits(json.smsCredits);
-                      } finally {
-                        setIsCheckingBalance(false);
-                      }
-                    }}
-                    isLoading={isCheckingBalance}
-                    className="gap-1.5 text-xs"
-                  >
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span>Refresh Balance</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {smsCredits === 0 && balance === null && (
+                      <Link href="/profile">
+                        <Button variant="primary" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Claim 50 Free SMS</span>
+                        </Button>
+                      </Link>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setIsCheckingBalance(true);
+                        try {
+                          const res = await fetch("/api/settings");
+                          const json = await res.json();
+                          if (typeof json.balance !== "undefined") setBalance(json.balance);
+                          if (typeof json.smsCredits !== "undefined") setSmsCredits(json.smsCredits);
+                        } finally {
+                          setIsCheckingBalance(false);
+                        }
+                      }}
+                      isLoading={isCheckingBalance}
+                      className="gap-1.5 text-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Refresh Balance</span>
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

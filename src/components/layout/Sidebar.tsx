@@ -18,6 +18,8 @@ import {
   Sparkles,
   Zap,
   ShieldAlert,
+  UserCheck,
+  ShieldCheck,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -30,6 +32,7 @@ export const NAV_ITEMS = [
   { label: "Active Leads", href: "/active-leads", icon: Users, badge: "AI" },
   { label: "Audience Segments", href: "/audiences", icon: Target },
   { label: "Reports", href: "/reports", icon: FileText },
+  { label: "My Profile", href: "/profile", icon: UserCheck },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -171,21 +174,29 @@ export function Sidebar() {
       </div>
 
       {/* User Profile Footer */}
-      <div className="p-3 border-t border-slate-100 flex items-center justify-between">
+      <Link
+        href="/profile"
+        className="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+      >
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
             {userInitials}
           </div>
           <div className="text-left">
-            <div className="text-xs font-semibold text-slate-900 leading-none truncate max-w-[120px]">
+            <div className="text-xs font-semibold text-slate-900 dark:text-white leading-none truncate max-w-[110px]">
               {currentUser?.name || "My Account"}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5 capitalize">
-              {currentUser?.platformRole === "superadmin" ? "SuperAdmin" : "Workspace Owner"}
+            <div className="text-[11px] text-slate-400 mt-0.5 capitalize flex items-center gap-1">
+              <span>{currentUser?.platformRole === "superadmin" ? "SuperAdmin" : "Workspace Owner"}</span>
             </div>
           </div>
         </div>
-      </div>
+        {currentUser?.isPhoneVerified ? (
+          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+        ) : (
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" title="Phone Unverified" />
+        )}
+      </Link>
     </aside>
   );
 }

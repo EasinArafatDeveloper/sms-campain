@@ -1,14 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Search, Bell, Calendar, ChevronDown, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
-import { Button } from "../ui/Button";
-
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  Bell,
+  Calendar,
+  ChevronDown,
+  CheckCircle2,
+  ShieldCheck,
+  ShieldAlert,
+  Sparkles,
+  User,
+  Settings,
+  LogOut,
+  Coins,
+  Shield,
+} from "lucide-react";
 import { ThemeToggle } from "../theme/ThemeToggle";
 
 export function TopHeader() {
+  const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -24,6 +41,27 @@ export function TopHeader() {
     }
     loadUser();
   }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/me", { method: "POST" });
+      router.push("/login");
+    } catch (err) {
+      console.error("Logout error:", err);
+      router.push("/login");
+    }
+  };
 
   const userInitials = currentUser?.name
     ? currentUser.name
@@ -96,19 +134,98 @@ export function TopHeader() {
           )}
         </div>
 
-        {/* User Badge */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-            {userInitials}
-          </div>
-          <div className="hidden lg:block text-left">
-            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none truncate max-w-[130px]">
-              {currentUser?.name || "Loading..."}
+        {/* User Interactive Badge & Dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-2.5 pl-2 border-l border-slate-200 dark:border-slate-800 py-1 hover:opacity-80 transition-opacity cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              {userInitials}
             </div>
-            <div className="text-[10px] text-slate-500 mt-0.5 capitalize">
-              {userRoleDisplay}
+            <div className="hidden lg:block text-left">
+              <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none truncate max-w-[130px]">
+                {currentUser?.name || "Loading..."}
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5 capitalize">
+                {userRoleDisplay}
+              </div>
             </div>
-          </div>
+            <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors hidden sm:block" />
+          </button>
+
+          {/* Profile Dropdown Menu */}
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-dropdown border border-slate-200 dark:border-slate-800 p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+              {/* User Summary Header */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80 mb-2">
+                <div className="font-bold text-slate-900 dark:text-white truncate">{currentUser?.name}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{currentUser?.email}</div>
+                
+                {/* Status Indicator */}
+                <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">Status:</span>
+                  {currentUser?.isPhoneVerified ? (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Phone Verified
+                    </span>
+                  ) : (
+                    <Link
+                      href="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200/80"
+                    >
+                      <ShieldAlert className="w-3 h-3" /> Verify Phone (+50 Credits)
+                    </Link>
+                  )}
+                </div>
+              </div>
+
+              {/* Menu Links */}
+              <div className="space-y-0.5 py-1 text-slate-700 dark:text-slate-300">
+                <Link
+                  href="/profile"
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors"
+                >
+                  <User className="w-4 h-4 text-blue-600" />
+                  <span>My Profile & Phone OTP</span>
+                </Link>
+
+                <Link
+                  href="/settings"
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-slate-500" />
+                  <span>Workspace Settings</span>
+                </Link>
+
+                {currentUser?.platformRole === "superadmin" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-semibold transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-amber-600" />
+                    <span>Super Admin Panel</span>
+                  </Link>
+                )}
+              </div>
+
+              {/* Sign Out Button */}
+              <div className="pt-1.5 mt-1 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold transition-colors text-left cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

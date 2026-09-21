@@ -76,25 +76,36 @@ export async function POST(req: NextRequest) {
     record.verified = true;
     await record.save();
 
-    // If active session exists, mark user phone verified and award initial trial credits
+    // Mark user phone verified and award initial trial credits
     const session = await getSession();
     let creditsAwarded = false;
+    let updatedCredits = 0;
+    let verifiedUser: any = null;
 
     if (session?.userId) {
-      const user = await UserModel.findById(session.userId);
-      if (user) {
-        const wasVerified = user.isPhoneVerified;
-        user.phone = normalized;
-        user.isPhoneVerified = true;
-        await user.save();
+      verifiedUser = await UserModel.findById(session.userId);
+    } else {
+      verifiedUser = await UserModel.findOne({ phone: normalized });
+    }
 
-        // If user was not verified before, award 20 free trial credits to their organization
-        if (!wasVerified && user.defaultOrganizationId) {
-          await OrganizationModel.findByIdAndUpdate(user.defaultOrganizationId, {
-            $inc: { smsCredits: 20 },
-          });
-          creditsAwarded = true;
-        }
+    if (verifiedUser) {
+      const wasVerified = verifiedUser.isPhoneVerified;
+      verifiedUser.phone = normalized;
+      verifiedUser.isPhoneVerified = true;
+      await verifiedUser.save();
+
+      const orgId = session?.organizationId || verifiedUser.defaultOrganizationId;
+      if (!wasVerified && orgId) {
+        const updatedOrg = await OrganizationModel.findByIdAndUpdate(
+          orgId,
+          { $inc: { smsCredits: 50 } },
+          { new: true }
+        );
+        creditsAwarded = true;
+        updatedCredits = updatedOrg?.smsCredits || 50;
+      } else if (orgId) {
+        const org = await OrganizationModel.findById(orgId);
+        updatedCredits = org?.smsCredits || 0;
       }
     }
 
@@ -102,8 +113,9 @@ export async function POST(req: NextRequest) {
       success: true,
       verified: true,
       creditsAwarded,
+      smsCredits: updatedCredits,
       message: creditsAwarded
-        ? "Phone number verified! 20 free trial SMS credits have been added to your workspace."
+        ? "Phone number verified! 50 free trial SMS credits have been added to your workspace."
         : "Phone number verified successfully!",
     });
   } catch (err: any) {
