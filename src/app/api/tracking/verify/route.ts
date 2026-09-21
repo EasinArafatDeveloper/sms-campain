@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { token, trackingId, screenWidth, screenHeight, hasTouch, renderTimeMs } = body;
 
-    if (!token && !trackingId) {
-      return NextResponse.json({ ok: false }, { status: 400 });
+    if (!token || typeof token !== "string") {
+      return NextResponse.json({ ok: false, error: "Token required" }, { status: 400 });
     }
 
     const result = await TrackingService.recordVerifiedHumanClick(

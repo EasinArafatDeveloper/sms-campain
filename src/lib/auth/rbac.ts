@@ -15,6 +15,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "settings:manage",
     "members:manage",
     "billing:manage",
+    "*",
   ],
   admin: [
     "campaigns:create",
@@ -29,28 +30,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "reports:export",
     "settings:manage",
     "members:manage",
-  ],
-  manager: [
-    "campaigns:create",
-    "campaigns:read",
-    "campaigns:update",
-    "campaigns:send",
-    "recipients:read",
-    "recipients:import",
-    "audiences:manage",
-    "analytics:read",
-    "reports:export",
-  ],
-  analyst: [
-    "campaigns:read",
-    "recipients:read",
-    "audiences:read",
-    "analytics:read",
-    "reports:export",
-  ],
-  viewer: [
-    "campaigns:read",
-    "analytics:read",
   ],
 };
 

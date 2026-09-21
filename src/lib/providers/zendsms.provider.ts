@@ -8,6 +8,8 @@ import {
 } from "./sms-provider.interface";
 import { normalizePhoneNumber } from "../utils";
 
+import { env } from "../env";
+
 export interface ZendSmsConfig {
   apiUrl?: string;
   balanceUrl?: string;
@@ -25,19 +27,19 @@ export class ZendSmsProvider implements ISmsProvider {
   constructor(config?: Partial<ZendSmsConfig>) {
     this.apiUrl =
       config?.apiUrl ||
-      process.env.ZENDSMS_API_URL ||
+      env.ZENDSMS_API_URL ||
       "https://api.zendsms.com/api/v1/send-sms";
     this.balanceUrl =
       config?.balanceUrl ||
-      process.env.ZENDSMS_BALANCE_URL ||
+      env.ZENDSMS_BALANCE_URL ||
       "https://api.zendsms.com/api/v1/balance";
     this.apiKey =
       config?.apiKey ||
-      process.env.ZENDSMS_API_KEY ||
-      "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo";
+      env.ZENDSMS_API_KEY ||
+      "";
     this.senderId =
       config?.senderId ||
-      process.env.ZENDSMS_SENDER_ID ||
+      env.ZENDSMS_SENDER_ID ||
       "8809612781020";
   }
 

@@ -35,27 +35,41 @@ export async function authenticateUser(email: string, passwordPlain: string): Pr
   const user = await UserModel.findOne({ email: email.toLowerCase().trim() });
   if (!user || !user.passwordHash) return null;
 
+  if (user.status === "disabled") {
+    throw new Error("ACCOUNT_DISABLED");
+  }
+
   const isMatch = await comparePassword(passwordPlain, user.passwordHash);
   if (!isMatch) return null;
 
-  // Find membership & organization
+  // Find user's actual membership
   let membership = await MembershipModel.findOne({ userId: user._id });
   let org = membership ? await OrganizationModel.findById(membership.organizationId) : null;
 
+  if (!org && user.defaultOrganizationId) {
+    org = await OrganizationModel.findById(user.defaultOrganizationId);
+  }
+
+  // If user truly has no org, create an isolated personal workspace for this user
   if (!org) {
-    org = await OrganizationModel.findOne();
-    if (!org) {
-      org = await OrganizationModel.create({
-        name: "SMSPro Demo Org",
-        slug: "smspro-demo",
-        plan: "enterprise",
-      });
-    }
+    const slug = `${user.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString().slice(-4)}`;
+    org = await OrganizationModel.create({
+      name: `${user.name}'s Workspace`,
+      slug,
+      plan: "growth",
+      smsCredits: 20,
+      senderIds: ["8809612781020", "SMSPRO"],
+      defaultSenderId: "8809612781020",
+    });
+
     membership = await MembershipModel.create({
       organizationId: org._id,
       userId: user._id,
-      role: user.role || "owner",
+      role: "owner",
     });
+
+    user.defaultOrganizationId = org._id as any;
+    await user.save();
   }
 
   return {
@@ -63,6 +77,7 @@ export async function authenticateUser(email: string, passwordPlain: string): Pr
     email: user.email,
     name: user.name,
     role: membership?.role || "owner",
+    platformRole: user.platformRole || "user",
     organizationId: org._id.toString(),
     organizationName: org.name,
     organizationSlug: org.slug,

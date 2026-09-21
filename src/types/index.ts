@@ -1,4 +1,5 @@
-export type UserRole = "owner" | "admin" | "manager" | "analyst" | "viewer";
+export type UserRole = "owner" | "admin";
+export type PlatformRole = "user" | "superadmin";
 
 export type CampaignStatus = "draft" | "scheduled" | "generating_links" | "queued" | "sending" | "completed" | "paused" | "failed" | "cancelled";
 
@@ -16,6 +17,7 @@ export interface IOrganization {
   slug: string;
   plan: "starter" | "growth" | "enterprise";
   status: "active" | "suspended";
+  smsCredits: number;
   senderIds: string[];
   defaultSenderId: string;
   trackingDomain: string;
@@ -33,9 +35,12 @@ export interface IUser {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
+  isPhoneVerified?: boolean;
   passwordHash?: string;
   avatar?: string;
   role: UserRole;
+  platformRole?: PlatformRole;
   status: "active" | "invited" | "disabled";
   defaultOrganizationId?: string;
   createdAt: Date;

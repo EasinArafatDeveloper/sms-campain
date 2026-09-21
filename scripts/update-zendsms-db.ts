@@ -1,14 +1,16 @@
 import mongoose from "mongoose";
 
 async function main() {
-  const uri =
-    process.env.MONGODB_URI ||
-    "mongodb+srv://easinnextleaders_db_user:SXOqQezYCRdwSzVW@cluster0.qnhfjkl.mongodb.net/smspro_production?retryWrites=true&w=majority";
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error("MONGODB_URI is required");
   await mongoose.connect(uri);
   console.log("Connected to MongoDB Atlas");
 
   const db = mongoose.connection.db;
   if (!db) throw new Error("No database connection");
+
+  const apiKey = process.env.ZENDSMS_API_KEY || "mock_key";
+  const senderId = process.env.ZENDSMS_SENDER_ID || "8809612781020";
 
   // 1. Update ApiCredential collection for ALL organizations
   const credsUpdate = await db.collection("apicredentials").updateMany(
@@ -17,10 +19,10 @@ async function main() {
       $set: {
         provider: "zendsms",
         name: "ZendSMS Primary Gateway",
-        apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
-        senderId: "8809612781020",
+        apiKey,
+        senderId,
         apiUrl: "https://api.zendsms.com/api/v1/send-sms",
-        balance: 4704,
+        balance: 500,
         status: "active",
         isDefault: true,
         updatedAt: new Date(),
@@ -38,10 +40,10 @@ async function main() {
       organizationId: orgId,
       provider: "zendsms",
       name: "ZendSMS Primary Gateway",
-      apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
-      senderId: "8809612781020",
+      apiKey,
+      senderId,
       apiUrl: "https://api.zendsms.com/api/v1/send-sms",
-      balance: 4704,
+      balance: 500,
       status: "active",
       isDefault: true,
       createdAt: new Date(),

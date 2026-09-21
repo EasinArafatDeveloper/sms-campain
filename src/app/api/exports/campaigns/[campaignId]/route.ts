@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { ExportService } from "@/lib/services/report.service";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ campaignId: string }> }
-) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const { campaignId } = await params;
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
+    const campaignId = ctx.params.campaignId;
+    const orgId = ctx.organizationId;
 
     const { csv, campaignName } = await ExportService.exportCampaignReportCsv(orgId, campaignId);
 
@@ -29,4 +25,4 @@ export async function GET(
     console.error("[Export Campaign Detailed Report API] Error:", err);
     return NextResponse.json({ error: "Failed to export campaign report" }, { status: 500 });
   }
-}
+});

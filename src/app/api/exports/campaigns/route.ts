@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { ExportService } from "@/lib/services/report.service";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
-    const csvContent = await ExportService.exportAllCampaignsReportCsv(orgId);
+    const csvContent = await ExportService.exportAllCampaignsReportCsv(ctx.organizationId);
 
     return new NextResponse(csvContent, {
       status: 200,
@@ -20,4 +17,4 @@ export async function GET(req: NextRequest) {
     console.error("[Export All Campaigns API] Error:", err);
     return NextResponse.json({ error: "Failed to export all campaigns" }, { status: 500 });
   }
-}
+});

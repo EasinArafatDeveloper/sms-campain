@@ -8,9 +8,18 @@ import {
 } from "@/lib/db/models";
 import { getSmsProviderForOrg } from "@/lib/providers";
 
+import { env } from "@/lib/env";
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   try {
     const { provider } = await params;
+
+    // Verify webhook authorization token if configured
+    const webhookAuth = req.headers.get("x-webhook-secret") || req.headers.get("authorization") || "";
+    if (env.NODE_ENV === "production" && env.WEBHOOK_SECRET && !webhookAuth.includes(env.WEBHOOK_SECRET)) {
+      return NextResponse.json({ error: "Unauthorized webhook caller" }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => ({}));
 
     await connectToDatabase();

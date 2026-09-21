@@ -20,6 +20,7 @@ export async function GET() {
       name: session.name,
       email: session.email,
       role: session.role,
+      platformRole: session.platformRole || "user",
       organizationId: session.organizationId,
       organizationName: session.organizationName,
       organizationSlug: session.organizationSlug,

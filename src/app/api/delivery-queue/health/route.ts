@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { DeliveryService } from "@/lib/services/delivery.service";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
-    const health = await DeliveryService.getApiHealth(orgId);
+    const health = await DeliveryService.getApiHealth(ctx.organizationId);
     return NextResponse.json(health);
   } catch (err: any) {
     console.error("[Delivery Health API] Error:", err);
     return NextResponse.json({ error: "Failed to get health metrics" }, { status: 500 });
   }
-}
+});

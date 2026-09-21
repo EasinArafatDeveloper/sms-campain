@@ -27,7 +27,7 @@ const DeliveryEventSchema = new Schema<IDeliveryEventDocument>(
       index: true,
     },
     payload: { type: Schema.Types.Mixed, default: {} },
-    occurredAt: { type: Date, default: Date.now, index: true },
+    occurredAt: { type: Date, default: Date.now },
   },
   {
     timestamps: false,
@@ -36,6 +36,8 @@ const DeliveryEventSchema = new Schema<IDeliveryEventDocument>(
 
 DeliveryEventSchema.index({ providerMessageId: 1, eventType: 1 });
 DeliveryEventSchema.index({ organizationId: 1, occurredAt: -1 });
+// 180-day TTL index for automatic storage lifecycle cleanup
+DeliveryEventSchema.index({ occurredAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 
 export const DeliveryEventModel: Model<IDeliveryEventDocument> =
   mongoose.models.DeliveryEvent || mongoose.model<IDeliveryEventDocument>("DeliveryEvent", DeliveryEventSchema);

@@ -16,8 +16,8 @@ const MembershipSchema = new Schema<IMembershipDocument>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     role: {
       type: String,
-      enum: ["owner", "admin", "manager", "analyst", "viewer"],
-      default: "manager",
+      enum: ["owner", "admin"],
+      default: "owner",
     },
     permissions: { type: [String], default: [] },
   },

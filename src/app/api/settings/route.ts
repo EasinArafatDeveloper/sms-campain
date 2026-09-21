@@ -1,68 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { OrganizationModel, ApiCredentialModel, UserModel } from "@/lib/db/models";
 import { connectToDatabase } from "@/lib/db/connect";
 import { getSmsProviderForOrg } from "@/lib/providers";
 import mongoose from "mongoose";
 
-export async function GET() {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
+    const orgId = ctx.organizationId;
     await connectToDatabase();
-    const org = await OrganizationModel.findById(orgObjId(orgId)).lean();
-    const providerCred = await ApiCredentialModel.findOne({ organizationId: orgObjId(orgId), isDefault: true }).lean();
-    const teamMembers = await UserModel.find({ defaultOrganizationId: orgObjId(orgId) }).select("-passwordHash").lean();
+    const orgObjId = new mongoose.Types.ObjectId(orgId);
 
-    // Check balance
+    const org = await OrganizationModel.findById(orgObjId).lean();
+    const providerCred = await ApiCredentialModel.findOne({ organizationId: orgObjId, isDefault: true }).lean();
+    const teamMembers = await UserModel.find({ defaultOrganizationId: orgObjId }).select("-passwordHash").lean();
+
+    // Check balance from provider
     const provider = await getSmsProviderForOrg(orgId);
     const balanceRes = await provider.getBalance();
 
+    // Mask sensitive API key for security
+    let maskedApiKey = "";
+    if (providerCred?.apiKey) {
+      maskedApiKey = providerCred.apiKey.length > 8
+        ? `${providerCred.apiKey.slice(0, 6)}...${providerCred.apiKey.slice(-4)}`
+        : "********";
+    }
+
     return NextResponse.json({
-      organization: org || {
-        name: "SMSPro Enterprise",
-        defaultSenderId: "8809612781020",
-        trackingDomain: "https://sms-campain.vercel.app",
-        settings: {
-          defaultTrackingLength: 6,
-          defaultTrackingFormat: "numeric",
-          retentionDays: 90,
-          enableWebhooks: true,
-        },
-      },
-      providerConfig: providerCred || {
-        provider: "zendsms",
-        name: "ZendSMS Primary",
-        apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
-        senderId: "8809612781020",
-        apiUrl: "https://api.zendsms.com/api/v1/send-sms",
-        balance: balanceRes.balance || 4704,
-      },
+      organization: org,
+      smsCredits: org?.smsCredits ?? 20,
+      providerConfig: providerCred
+        ? {
+            ...providerCred,
+            apiKey: maskedApiKey,
+            hasCustomKey: !!providerCred.apiKey,
+          }
+        : null,
       balance: balanceRes.balance,
-      teamMembers: teamMembers.length > 0 ? teamMembers : [
-        { _id: "1", name: "Omer Sharif", email: "omer@smspro.io", role: "owner", status: "active" },
-        { _id: "2", name: "Sarah Jenkins", email: "sarah@smspro.io", role: "manager", status: "active" },
-        { _id: "3", name: "Dev Team", email: "dev@smspro.io", role: "admin", status: "active" },
-      ],
+      teamMembers: teamMembers,
     });
   } catch (err: any) {
     console.error("[Settings API] Error:", err);
     return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
+    const orgId = ctx.organizationId;
     const body = await req.json();
     await connectToDatabase();
+    const orgObjId = new mongoose.Types.ObjectId(orgId);
 
     if (body.organization) {
       await OrganizationModel.updateOne(
-        { _id: orgObjId(orgId) },
+        { _id: orgObjId },
         {
           $set: {
             name: body.organization.name,
@@ -70,23 +63,26 @@ export async function POST(req: NextRequest) {
             trackingDomain: body.organization.trackingDomain,
             settings: body.organization.settings,
           },
-        },
-        { upsert: true }
+        }
       );
     }
 
     if (body.providerConfig) {
+      const updateData: any = {
+        provider: body.providerConfig.provider,
+        name: body.providerConfig.name,
+        senderId: body.providerConfig.senderId,
+        apiUrl: body.providerConfig.apiUrl,
+      };
+
+      // Only update API key if user typed a new unmasked key
+      if (body.providerConfig.apiKey && !body.providerConfig.apiKey.includes("...")) {
+        updateData.apiKey = body.providerConfig.apiKey.trim();
+      }
+
       await ApiCredentialModel.updateOne(
-        { organizationId: orgObjId(orgId), isDefault: true },
-        {
-          $set: {
-            provider: body.providerConfig.provider,
-            name: body.providerConfig.name,
-            apiKey: body.providerConfig.apiKey,
-            senderId: body.providerConfig.senderId,
-            apiUrl: body.providerConfig.apiUrl,
-          },
-        },
+        { organizationId: orgObjId, isDefault: true },
+        { $set: updateData },
         { upsert: true }
       );
     }
@@ -96,12 +92,4 @@ export async function POST(req: NextRequest) {
     console.error("[Settings API] Update error:", err);
     return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
   }
-}
-
-function orgObjId(id: string) {
-  try {
-    return new mongoose.Types.ObjectId(id);
-  } catch {
-    return new mongoose.Types.ObjectId("670000000000000000000001");
-  }
-}
+});

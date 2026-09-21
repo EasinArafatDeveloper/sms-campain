@@ -1,14 +1,22 @@
 import { z } from "zod";
 
+const safeUrlSchema = z
+  .string()
+  .url("Valid URL required")
+  .refine((url) => /^https?:\/\//i.test(url.trim()), {
+    message: "URL must begin with http:// or https:// (javascript/data schemes are forbidden)",
+  });
+
 export const LoginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const RegisterSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  phone: z.string().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   organizationName: z.string().min(2, "Organization name must be at least 2 characters"),
 });
 
@@ -23,7 +31,7 @@ export const CreateCampaignSchema = z.object({
   audienceType: z.enum(["upload", "manual", "paste", "existing", "crm", "segment", "retargeting"]),
   audienceId: z.string().optional(),
   audienceName: z.string().optional(),
-  destinationUrl: z.string().url("Valid destination URL required"),
+  destinationUrl: safeUrlSchema,
   trackingFormat: z.enum(["numeric", "alphanumeric"]).default("alphanumeric"),
   trackingLength: z.number().min(3).max(12).default(6),
   urlPrefix: z.string().max(30).default("eid").optional(),
@@ -55,7 +63,7 @@ export const CreateAudienceSegmentSchema = z.object({
 export const UpdateSettingsSchema = z.object({
   name: z.string().min(2, "Organization name is required"),
   defaultSenderId: z.string().min(2, "Default Sender ID is required"),
-  trackingDomain: z.string().url("Valid tracking domain required"),
+  trackingDomain: safeUrlSchema,
   defaultTrackingLength: z.number().min(3).max(12),
   defaultTrackingFormat: z.enum(["numeric", "alphanumeric"]),
   retentionDays: z.number().min(7).max(365),
@@ -67,7 +75,7 @@ export const SaveSmsProviderSchema = z.object({
   name: z.string().min(2, "Provider name is required"),
   apiKey: z.string().min(4, "API Key is required"),
   senderId: z.string().min(2, "Sender ID is required"),
-  apiUrl: z.string().url().optional().or(z.literal("")),
+  apiUrl: safeUrlSchema.optional().or(z.literal("")),
   isDefault: z.boolean().default(true),
 });
 
@@ -75,4 +83,13 @@ export const SendTestSmsSchema = z.object({
   phone: z.string().min(8, "Phone number is required"),
   message: z.string().min(1, "Message is required"),
   senderId: z.string().optional(),
+});
+
+export const SendOtpSchema = z.object({
+  phone: z.string().min(10, "Valid phone number required (e.g. +8801700000000)"),
+});
+
+export const VerifyOtpSchema = z.object({
+  phone: z.string().min(10, "Valid phone number required"),
+  code: z.string().length(6, "Verification code must be 6 digits"),
 });

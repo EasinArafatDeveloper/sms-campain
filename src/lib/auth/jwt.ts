@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
+import { env } from "@/lib/env";
 
-const AUTH_SECRET = process.env.AUTH_SECRET || "smspro_enterprise_super_secret_jwt_key_2026_x89271409128371293";
+const AUTH_SECRET = env.AUTH_SECRET;
 const secretKey = new TextEncoder().encode(AUTH_SECRET);
 
 export interface SessionPayload {
@@ -8,6 +9,7 @@ export interface SessionPayload {
   email: string;
   name: string;
   role: string;
+  platformRole?: string;
   organizationId: string;
   organizationName: string;
   organizationSlug: string;

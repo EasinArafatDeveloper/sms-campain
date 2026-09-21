@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { AnalyticsService } from "@/lib/services/analytics.service";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
     const { searchParams } = new URL(req.url);
     const campaignId = searchParams.get("campaignId") || undefined;
 
-    const data = await AnalyticsService.getClickAnalyticsMetrics(orgId, campaignId);
+    const data = await AnalyticsService.getClickAnalyticsMetrics(ctx.organizationId, campaignId);
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("[Analytics API] Error:", err);
     return NextResponse.json({ error: "Failed to fetch analytics metrics" }, { status: 500 });
   }
-}
+});

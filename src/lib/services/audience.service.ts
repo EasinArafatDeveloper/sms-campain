@@ -7,6 +7,7 @@ import {
   AuditLogModel,
 } from "@/lib/db/models";
 import { IAudienceSegment, PaginatedResult } from "@/types";
+import { escapeRegex } from "../security";
 
 export class AudienceService {
   /**
@@ -116,9 +117,10 @@ export class AudienceService {
     }
 
     if (options.search) {
+      const safeSearch = escapeRegex(options.search);
       query.$or = [
-        { phone: { $regex: options.search, $options: "i" } },
-        { recipientName: { $regex: options.search, $options: "i" } },
+        { phone: { $regex: safeSearch, $options: "i" } },
+        { recipientName: { $regex: safeSearch, $options: "i" } },
       ];
     }
 

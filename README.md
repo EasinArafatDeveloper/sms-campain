@@ -26,7 +26,7 @@ graph TD
 - **Styling**: Vanilla Tailwind CSS, Radix UI Primitives, Lucide Icons
 - **Data & Persistence**: MongoDB Atlas via Mongoose (with tenant compound indexes)
 - **Queue Architecture**: BullMQ + Redis (with resilient in-memory/MongoDB fallback)
-- **SMS Gateway**: ZendSMS Official Provider Adapter (API Key: `sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo`, Sender ID: `8809612781020`)
+- **SMS Gateway**: ZendSMS Official Provider Adapter (Configured via `ZENDSMS_API_KEY`, Sender ID: `8809612781020`)
 - **Authentication**: JWT Sessions (`jose` HS256) with HTTP-only cookies and RBAC
 - **Validation**: Zod (100% schema coverage)
 - **Testing**: Vitest automated unit & integration test suites

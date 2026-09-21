@@ -7,6 +7,7 @@ import {
   EngagementProfileModel,
 } from "@/lib/db/models";
 import { PaginatedResult } from "@/types";
+import { escapeRegex } from "../security";
 
 export class AnalyticsService {
   /**
@@ -119,9 +120,10 @@ export class AnalyticsService {
     }
 
     if (options.search) {
+      const safeSearch = escapeRegex(options.search);
       matchQuery.$or = [
-        { phone: { $regex: options.search, $options: "i" } },
-        { trackingId: { $regex: options.search, $options: "i" } },
+        { phone: { $regex: safeSearch, $options: "i" } },
+        { trackingId: { $regex: safeSearch, $options: "i" } },
       ];
     }
 

@@ -17,6 +17,7 @@ import {
   Settings,
   Sparkles,
   Zap,
+  ShieldAlert,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -34,6 +35,33 @@ export const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data.user);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadUser();
+  }, []);
+
+  const isSuperAdmin = currentUser?.platformRole === "superadmin";
+
+  const userInitials = currentUser?.name
+    ? currentUser.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "US";
 
   return (
     <aside className="w-64 border-r border-slate-200 bg-white flex flex-col flex-shrink-0 min-h-screen">
@@ -98,6 +126,31 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {isSuperAdmin && (
+          <div className="pt-3">
+            <div className="px-3 pb-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+              Administration
+            </div>
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-all group",
+                pathname.startsWith("/admin")
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-amber-900 bg-amber-50/60 hover:bg-amber-100/80 border border-amber-200/60"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="w-4 h-4 text-amber-600" />
+                <span>Super Admin</span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-900">
+                MASTER
+              </span>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Smart Retargeting Card */}
@@ -121,11 +174,15 @@ export function Sidebar() {
       <div className="p-3 border-t border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-            OS
+            {userInitials}
           </div>
           <div className="text-left">
-            <div className="text-xs font-semibold text-slate-900 leading-none">Omer Sharif</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Marketing Manager</div>
+            <div className="text-xs font-semibold text-slate-900 leading-none truncate max-w-[120px]">
+              {currentUser?.name || "My Account"}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5 capitalize">
+              {currentUser?.platformRole === "superadmin" ? "SuperAdmin" : "Workspace Owner"}
+            </div>
           </div>
         </div>
       </div>

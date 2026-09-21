@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, signSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { LoginSchema } from "@/lib/validations";
+import { rateLimit } from "@/lib/security";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    const limiter = await rateLimit(`login:${ip}`, 10, 15 * 60 * 1000); // 10 attempts per 15 min
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please wait a few minutes before trying again." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const validated = LoginSchema.safeParse(body);
 
@@ -14,7 +25,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sessionPayload = await authenticateUser(validated.data.email, validated.data.password);
+    let sessionPayload;
+    try {
+      sessionPayload = await authenticateUser(validated.data.email, validated.data.password);
+    } catch (authErr: any) {
+      if (authErr.message === "ACCOUNT_DISABLED") {
+        return NextResponse.json(
+          { error: "Your account has been suspended or disabled. Please contact support." },
+          { status: 403 }
+        );
+      }
+      throw authErr;
+    }
 
     if (!sessionPayload) {
       return NextResponse.json(
@@ -32,6 +54,7 @@ export async function POST(req: NextRequest) {
         name: sessionPayload.name,
         email: sessionPayload.email,
         role: sessionPayload.role,
+        platformRole: sessionPayload.platformRole || "user",
         organizationName: sessionPayload.organizationName,
         organizationSlug: sessionPayload.organizationSlug,
       },

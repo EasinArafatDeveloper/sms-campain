@@ -23,16 +23,17 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "gateway" | "team">("gateway");
 
   // State
-  const [orgName, setOrgName] = useState("SMSPro Enterprise");
+  const [orgName, setOrgName] = useState("My Workspace");
   const [defaultSenderId, setDefaultSenderId] = useState("8809612781020");
-  const [trackingDomain, setTrackingDomain] = useState("https://sms-campain.vercel.app");
+  const [trackingDomain, setTrackingDomain] = useState("https://postman.asia");
   const [trackingLength, setTrackingLength] = useState(6);
+  const [smsCredits, setSmsCredits] = useState<number>(20);
 
   // SMS Gateway Config (ZendSMS)
-  const [apiKey, setApiKey] = useState("sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo");
+  const [apiKey, setApiKey] = useState("");
   const [senderId, setSenderId] = useState("8809612781020");
   const [apiUrl, setApiUrl] = useState("https://api.zendsms.com/api/v1/send-sms");
-  const [balance, setBalance] = useState<number | null>(4704);
+  const [balance, setBalance] = useState<number | null>(null);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
   // Test SMS State
@@ -50,12 +51,18 @@ export default function SettingsPage() {
         const res = await fetch("/api/settings");
         const data = await res.json();
         if (data.organization) {
-          setOrgName(data.organization.name || "SMSPro Enterprise");
+          setOrgName(data.organization.name || "My Workspace");
           setDefaultSenderId(data.organization.defaultSenderId || "8809612781020");
-          setTrackingDomain(data.organization.trackingDomain || "https://sms-campain.vercel.app");
+          setTrackingDomain(data.organization.trackingDomain || "https://postman.asia");
+          if (data.organization.settings?.defaultTrackingLength) {
+            setTrackingLength(data.organization.settings.defaultTrackingLength);
+          }
+        }
+        if (typeof data.smsCredits !== "undefined") {
+          setSmsCredits(data.smsCredits);
         }
         if (data.providerConfig) {
-          setApiKey(data.providerConfig.apiKey || "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo");
+          setApiKey(data.providerConfig.apiKey || "");
           setSenderId(data.providerConfig.senderId || "8809612781020");
           setApiUrl(data.providerConfig.apiUrl || "https://api.zendsms.com/api/v1/send-sms");
         }

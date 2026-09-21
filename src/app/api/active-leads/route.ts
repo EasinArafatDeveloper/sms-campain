@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { AudienceService } from "@/lib/services/audience.service";
 import { EngagementService } from "@/lib/services/engagement.service";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
+    const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "10", 10);
@@ -31,4 +29,4 @@ export async function GET(req: NextRequest) {
     console.error("[Active Leads API] Error:", err);
     return NextResponse.json({ error: "Failed to fetch active leads" }, { status: 500 });
   }
-}
+});

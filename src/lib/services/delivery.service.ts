@@ -6,9 +6,11 @@ import {
   CampaignModel,
   DeliveryEventModel,
   AuditLogModel,
+  OrganizationModel,
 } from "@/lib/db/models";
 import { getSmsProviderForOrg } from "../providers";
 import { DeliveryStatus, PaginatedResult } from "@/types";
+import { escapeRegex } from "../security";
 
 export interface DeliveryQueueStats {
   totalQueued: number;
@@ -106,10 +108,11 @@ export class DeliveryService {
     }
 
     if (options.search) {
+      const safeSearch = escapeRegex(options.search);
       query.$or = [
-        { phone: { $regex: options.search, $options: "i" } },
-        { trackingId: { $regex: options.search, $options: "i" } },
-        { providerMessageId: { $regex: options.search, $options: "i" } },
+        { phone: { $regex: safeSearch, $options: "i" } },
+        { trackingId: { $regex: safeSearch, $options: "i" } },
+        { providerMessageId: { $regex: safeSearch, $options: "i" } },
       ];
     }
 
@@ -171,28 +174,67 @@ export class DeliveryService {
   }
 
   /**
-   * Processes a batch of queued SMS jobs synchronously or from queue worker.
+   * Processes a batch of queued SMS jobs atomically with wallet credit verification.
    */
-  static async processBatch(organizationId: string, limit = 50): Promise<{ processed: number; sent: number; failed: number }> {
+  static async processBatch(
+    organizationId: string,
+    limit = 50,
+    campaignId?: string
+  ): Promise<{ processed: number; sent: number; failed: number; outOfCredits?: boolean }> {
     await connectToDatabase();
     const orgObjId = new mongoose.Types.ObjectId(organizationId);
     const provider = await getSmsProviderForOrg(organizationId);
 
-    const jobs = await DeliveryJobModel.find({
+    const query: any = {
       organizationId: orgObjId,
       status: { $in: ["queued", "retrying", "pending_retry"] },
-    })
+    };
+
+    if (campaignId) {
+      query.campaignId = new mongoose.Types.ObjectId(campaignId);
+    }
+
+    const candidateJobs = await DeliveryJobModel.find(query)
       .limit(limit)
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .select("_id");
 
     let sent = 0;
     let failed = 0;
+    let outOfCredits = false;
 
-    for (const job of jobs) {
-      job.status = "processing";
-      job.attempts += 1;
-      job.lastAttemptAt = new Date();
-      await job.save();
+    for (const candidate of candidateJobs) {
+      // 1. Check & Atomically Deduct 1 Credit from Organization Wallet
+      const orgCreditDeduction = await OrganizationModel.findOneAndUpdate(
+        { _id: orgObjId, smsCredits: { $gt: 0 } },
+        { $inc: { smsCredits: -1 } },
+        { new: true }
+      );
+
+      if (!orgCreditDeduction) {
+        // Out of SMS credits: do not dispatch further
+        outOfCredits = true;
+        break;
+      }
+
+      // 2. Atomically claim job (prevents dual-worker race conditions)
+      const job = await DeliveryJobModel.findOneAndUpdate(
+        {
+          _id: candidate._id,
+          status: { $in: ["queued", "retrying", "pending_retry"] },
+        },
+        {
+          $set: { status: "processing", lastAttemptAt: new Date() },
+          $inc: { attempts: 1 },
+        },
+        { new: true }
+      );
+
+      if (!job) {
+        // Already claimed by another worker, refund credit
+        await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+        continue;
+      }
 
       const result = await provider.sendSms({
         to: job.phone,
@@ -203,6 +245,7 @@ export class DeliveryService {
       if (result.success) {
         job.status = "sent";
         job.providerMessageId = result.providerMessageId;
+        await job.save();
         sent++;
 
         // Update CampaignRecipient
@@ -241,12 +284,17 @@ export class DeliveryService {
           payload: result.rawResponse || {},
         });
       } else {
+        // Refund credit on immediate failure
+        await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+
         if (job.attempts < job.maxAttempts) {
           job.status = "pending_retry";
-          job.nextRetryAt = new Date(Date.now() + job.attempts * 60000); // Exponential backoff
+          job.nextRetryAt = new Date(Date.now() + job.attempts * 60000);
+          await job.save();
         } else {
           job.status = "failed";
           job.errorMessage = result.error;
+          await job.save();
           failed++;
 
           await CampaignModel.updateOne(
@@ -257,14 +305,8 @@ export class DeliveryService {
           );
         }
       }
-
-      await job.save();
     }
 
-    return {
-      processed: jobs.length,
-      sent,
-      failed,
-    };
+    return { processed: sent + failed, sent, failed, outOfCredits };
   }
 }

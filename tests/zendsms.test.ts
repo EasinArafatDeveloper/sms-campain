@@ -3,7 +3,7 @@ import { ZendSmsProvider } from "../src/lib/providers/zendsms.provider";
 
 describe("ZendSMS Provider Adapter Tests", () => {
   const provider = new ZendSmsProvider({
-    apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
+    apiKey: "mock_test_key_12345",
     senderId: "8809612781020",
     apiUrl: "https://api.zendsms.com/api/v1/send-sms",
     balanceUrl: "https://api.zendsms.com/api/v1/balance",

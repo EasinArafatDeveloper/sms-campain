@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { getSmsProviderForOrg } from "@/lib/providers";
 import { SendTestSmsSchema } from "@/lib/validations";
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
+    const orgId = ctx.organizationId;
     const body = await req.json();
     const validated = SendTestSmsSchema.safeParse(body);
 
@@ -42,4 +40,4 @@ export async function POST(req: NextRequest) {
     console.error("[Test SMS API] Error:", err);
     return NextResponse.json({ error: err.message || "Failed to send test SMS" }, { status: 500 });
   }
-}
+});

@@ -30,7 +30,7 @@ const ClickEventSchema = new Schema<IClickEventDocument>(
     recipientId: { type: Schema.Types.ObjectId, ref: "Recipient", required: true, index: true },
     trackingId: { type: String, required: true, index: true },
     destinationUrl: { type: String, required: true },
-    clickedAt: { type: Date, default: Date.now, index: true },
+    clickedAt: { type: Date, default: Date.now },
     ipHash: { type: String },
     userAgent: { type: String },
     referer: { type: String },
@@ -48,6 +48,8 @@ const ClickEventSchema = new Schema<IClickEventDocument>(
 ClickEventSchema.index({ organizationId: 1, clickedAt: -1 });
 ClickEventSchema.index({ organizationId: 1, recipientId: 1 });
 ClickEventSchema.index({ organizationId: 1, campaignId: 1, clickedAt: -1 });
+// 180-day TTL index for automatic storage hygiene and data lifecycle management
+ClickEventSchema.index({ clickedAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 
 export const ClickEventModel: Model<IClickEventDocument> =
   mongoose.models.ClickEvent || mongoose.model<IClickEventDocument>("ClickEvent", ClickEventSchema);

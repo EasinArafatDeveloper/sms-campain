@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connect";
-import { UserModel, OrganizationModel, MembershipModel, ApiCredentialModel } from "@/lib/db/models";
+import { UserModel, OrganizationModel, MembershipModel } from "@/lib/db/models";
 import { hashPassword, signSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { RegisterSchema } from "@/lib/validations";
+import { rateLimit } from "@/lib/security";
+import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    const limiter = await rateLimit(`register:${ip}`, 5, 15 * 60 * 1000); // 5 registrations per 15 min
+
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const validated = RegisterSchema.safeParse(body);
 
@@ -24,24 +36,33 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(validated.data.password);
-    const slug = validated.data.organizationName
+    const rawSlug = validated.data.organizationName
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "-")
-      .replace(/-+/g, "-");
+      .replace(/-+/g, "-")
+      .slice(0, 30);
+    const uniqueSuffix = crypto.randomBytes(3).toString("hex");
+    const slug = `${rawSlug}-${uniqueSuffix}`;
 
+    // Create Tenant Workspace with 20 Free Trial SMS Credits
     const org = await OrganizationModel.create({
       name: validated.data.organizationName,
-      slug: `${slug}-${Date.now().toString().slice(-4)}`,
+      slug,
       plan: "growth",
-      senderIds: ["MYBRAND", "SMSPRO", "8809612781020"],
+      smsCredits: 20,
+      senderIds: ["8809612781020", "SMSPRO", "MYBRAND"],
       defaultSenderId: "8809612781020",
+      trackingDomain: "https://postman.asia",
     });
 
     const user = await UserModel.create({
       name: validated.data.name,
       email: validated.data.email.toLowerCase().trim(),
+      phone: validated.data.phone?.trim() || undefined,
+      isPhoneVerified: false,
       passwordHash,
       role: "owner",
+      platformRole: "user",
       defaultOrganizationId: org._id,
     });
 
@@ -52,24 +73,12 @@ export async function POST(req: NextRequest) {
       permissions: ["*"],
     });
 
-    // Default ZendSMS Provider Credential
-    await ApiCredentialModel.create({
-      organizationId: org._id,
-      provider: "zendsms",
-      name: "ZendSMS Primary Gateway",
-      apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
-      senderId: "8809612781020",
-      apiUrl: "https://api.zendsms.com/api/v1/send-sms",
-      isDefault: true,
-      status: "active",
-      balance: 4704,
-    });
-
     const token = await signSessionToken({
       userId: user._id.toString(),
       email: user.email,
       name: user.name,
       role: "owner",
+      platformRole: "user",
       organizationId: org._id.toString(),
       organizationName: org.name,
       organizationSlug: org.slug,
@@ -82,6 +91,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         organizationName: org.name,
+        smsCredits: org.smsCredits,
       },
     });
 

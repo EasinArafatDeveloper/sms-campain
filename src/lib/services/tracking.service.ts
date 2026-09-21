@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db/connect";
 import { TrackingLinkModel, ClickEventModel, CampaignRecipientModel, CampaignModel, EngagementProfileModel } from "@/lib/db/models";
 import { EngagementService } from "./engagement.service";
 import { TrackingFormat } from "@/types";
+import { escapeRegex, sanitizeUrl } from "../security";
 
 export class TrackingService {
   /**
@@ -170,17 +171,29 @@ export class TrackingService {
 
   /**
    * Generates ultra-fast client-side HTML trampoline page for human touchpoint verification.
+   * Fully sanitizes URLs and prevents stored XSS when embedding variables in HTML/JS.
    */
   static generateTrampolineHtml(destinationUrl: string, trackingId: string, verifyToken: string): string {
-    const safeDest = destinationUrl.replace(/"/g, "&quot;");
-    const safeId = trackingId.replace(/"/g, "&quot;");
+    const validUrl = sanitizeUrl(destinationUrl) || "https://postman.asia";
+    // Sanitize for HTML attribute
+    const safeHtmlDest = validUrl
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Sanitize JSON embeddings against script tag breakout
+    const safeDestJson = JSON.stringify(validUrl).replace(/</g, "\\u003c");
+    const safeTokenJson = JSON.stringify(verifyToken).replace(/</g, "\\u003c");
+    const safeTrackingIdJson = JSON.stringify(trackingId).replace(/</g, "\\u003c");
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="1;url=${safeDest}">
+  <meta http-equiv="refresh" content="1;url=${safeHtmlDest}">
   <title>Opening Link...</title>
   <style>
     body {
@@ -223,9 +236,9 @@ export class TrackingService {
   </div>
   <script>
     (function() {
-      var dest = "${safeDest.replace(/'/g, "\\'")}";
-      var token = "${verifyToken}";
-      var trk = "${safeId.replace(/'/g, "\\'")}";
+      var dest = ${safeDestJson};
+      var token = ${safeTokenJson};
+      var trk = ${safeTrackingIdJson};
       try {
         var payload = JSON.stringify({
           token: token,
@@ -284,15 +297,18 @@ export class TrackingService {
     const cleanId = (trackingId || "").trim();
     const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
 
+    const safeCleanId = escapeRegex(cleanId);
+    const safeSubId = escapeRegex(subId);
+
     const link = await TrackingLinkModel.findOne({
       $or: [
         { trackingId: cleanId },
         { trackingId: cleanId.toLowerCase() },
         { trackingId: subId },
         { trackingId: subId.toLowerCase() },
-        { trackingId: { $regex: new RegExp(`^${cleanId}$`, "i") } },
-        { trackingId: { $regex: new RegExp(`^${subId}$`, "i") } },
-        { uniqueUrl: { $regex: new RegExp(`/${cleanId}$`, "i") } },
+        { trackingId: { $regex: `^${safeCleanId}$`, $options: "i" } },
+        { trackingId: { $regex: `^${safeSubId}$`, $options: "i" } },
+        { uniqueUrl: { $regex: `/${safeCleanId}$`, $options: "i" } },
       ],
       status: "active",
     });
@@ -385,7 +401,7 @@ export class TrackingService {
    * Finalizes a verified human click after client-side JavaScript beacon execution.
    */
   static async recordVerifiedHumanClick(
-    token?: string,
+    token: string,
     trackingId?: string,
     clientMeta?: {
       screenWidth?: number;
@@ -396,13 +412,14 @@ export class TrackingService {
   ): Promise<{ success: boolean; verified: boolean }> {
     await connectToDatabase();
 
-    const query: any = {};
-    if (token) {
-      query["metadata.verifyToken"] = token;
-    } else if (trackingId) {
-      query.trackingId = trackingId;
-    } else {
+    // Verification token is required to prevent unauthorized click forging
+    if (!token || typeof token !== "string") {
       return { success: false, verified: false };
+    }
+
+    const query: any = { "metadata.verifyToken": token };
+    if (trackingId) {
+      query.trackingId = trackingId;
     }
 
     // Find the most recent pending candidate click event
@@ -435,13 +452,18 @@ export class TrackingService {
     const cleanId = event.trackingId;
     const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
 
+    const safeCleanId = escapeRegex(cleanId);
+    const safeSubId = escapeRegex(subId);
+
     const link = await TrackingLinkModel.findOne({
       $or: [
         { trackingId: cleanId },
         { trackingId: cleanId.toLowerCase() },
         { trackingId: subId },
         { trackingId: subId.toLowerCase() },
-        { uniqueUrl: { $regex: new RegExp(`/${cleanId}$`, "i") } },
+        { trackingId: { $regex: `^${safeCleanId}$`, $options: "i" } },
+        { trackingId: { $regex: `^${safeSubId}$`, $options: "i" } },
+        { uniqueUrl: { $regex: `/${safeCleanId}$`, $options: "i" } },
       ],
     });
 

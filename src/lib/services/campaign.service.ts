@@ -12,6 +12,7 @@ import {
 import { TrackingService } from "./tracking.service";
 import { normalizePhoneNumber } from "../utils";
 import { ICampaign, PaginatedResult } from "@/types";
+import { escapeRegex } from "../security";
 
 export interface CreateCampaignDTO {
   name: string;
@@ -272,7 +273,7 @@ export class CampaignService {
     }
 
     if (options.search) {
-      query.name = { $regex: options.search, $options: "i" };
+      query.name = { $regex: escapeRegex(options.search), $options: "i" };
     }
 
     const [data, total] = await Promise.all([

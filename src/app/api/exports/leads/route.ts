@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { ExportService } from "@/lib/services/report.service";
 
-export async function GET() {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
-    const csvContent = await ExportService.exportActiveLeadsCsv(orgId);
+    const csvContent = await ExportService.exportActiveLeadsCsv(ctx.organizationId);
 
     return new NextResponse(csvContent, {
       status: 200,
@@ -20,4 +17,4 @@ export async function GET() {
     console.error("[Export Leads API] Error:", err);
     return NextResponse.json({ error: "Failed to export leads" }, { status: 500 });
   }
-}
+});

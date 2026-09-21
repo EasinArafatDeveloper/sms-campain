@@ -91,12 +91,12 @@ async function resetClean() {
     organizationId: org._id,
     provider: "zendsms",
     name: "ZendSMS Primary Gateway",
-    apiKey: "sk_agowwwg3j8x8u8o5opcwoyqgxii2zafmikbxtfxo",
-    senderId: "8809612781020",
-    apiUrl: "https://api.zendsms.com/api/v1/send-sms",
+    apiKey: process.env.ZENDSMS_API_KEY || "mock_reset_key",
+    senderId: process.env.ZENDSMS_SENDER_ID || "8809612781020",
+    apiUrl: process.env.ZENDSMS_API_URL || "https://api.zendsms.com/api/v1/send-sms",
     isDefault: true,
     status: "active",
-    balance: 4704,
+    balance: 500,
   });
 
   console.log("[Clean Reset] Workspace reset complete! Database is 100% clean and fresh.");

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { CampaignService } from "@/lib/services/campaign.service";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const { id } = await params;
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
+    const id = ctx.params.id;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
     const isDetailed = searchParams.get("detailed") === "true";
@@ -42,14 +41,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     console.error("[Campaign API] Get error:", err);
     return NextResponse.json({ error: "Failed to fetch campaign" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const DELETE = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const { id } = await params;
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-    const userId = session?.userId;
+    const id = ctx.params.id;
+    const orgId = ctx.organizationId;
+    const userId = ctx.userId;
 
     const result = await CampaignService.deleteCampaign(orgId, id, userId);
     if (!result.success) {
@@ -58,12 +56,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     return NextResponse.json({
       success: true,
-      message: "Campaign and all associated delivery records, tracking links, and click events deleted successfully.",
-      deletedCounts: result.deletedCounts,
+      message: "Campaign and associated tracking resources deleted",
     });
   } catch (err: any) {
     console.error("[Campaign API] Delete error:", err);
     return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
   }
-}
-
+});

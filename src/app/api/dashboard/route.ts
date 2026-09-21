@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { DashboardService } from "@/lib/services/dashboard.service";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
-    const metrics = await DashboardService.getMetrics(orgId);
+    const metrics = await DashboardService.getMetrics(ctx.organizationId);
     return NextResponse.json(metrics);
   } catch (err: any) {
     console.error("[Dashboard API] Error:", err);
     return NextResponse.json({ error: "Failed to fetch dashboard metrics" }, { status: 500 });
   }
-}
+});

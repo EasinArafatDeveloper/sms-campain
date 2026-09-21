@@ -13,3 +13,4 @@ export * from "./AudienceSegment";
 export * from "./AuditLog";
 export * from "./ApiCredential";
 export * from "./Notification";
+export * from "./PhoneVerification";

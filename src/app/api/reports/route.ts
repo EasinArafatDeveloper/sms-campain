@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { withTenant, TenantContext } from "@/lib/auth";
 import { ReportService } from "@/lib/services/report.service";
 
-export async function GET() {
+export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   try {
-    const session = await getSession();
-    const orgId = session?.organizationId || "670000000000000000000001";
-
-    const reports = await ReportService.getReportsSummary(orgId);
+    const reports = await ReportService.getReportsSummary(ctx.organizationId);
     return NextResponse.json(reports);
   } catch (err: any) {
     console.error("[Reports API] Error:", err);
     return NextResponse.json({ error: "Failed to generate reports" }, { status: 500 });
   }
-}
+});
