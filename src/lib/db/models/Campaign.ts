@@ -55,7 +55,7 @@ const CampaignSchema = new Schema<ICampaignDocument>(
     audienceName: { type: String },
     recipientCount: { type: Number, default: 0 },
     trackingConfig: {
-      destinationUrl: { type: String, default: "https://mybrand.com/offer" },
+      destinationUrl: { type: String, default: "" },
       format: { type: String, enum: ["numeric", "alphanumeric"], default: "alphanumeric" },
       length: { type: Number, default: 6 },
       urlPrefix: { type: String, default: "eid" },

@@ -21,6 +21,13 @@ import {
 const MONGODB_URI = process.env.MONGODB_URI;
 
 async function resetClean() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_SEED !== "true") {
+    console.error("\n❌ [FATAL SECURITY ERROR] Cannot run database reset scripts in PRODUCTION environment!");
+    console.error("To prevent catastrophic data loss in production, this script is blocked.");
+    console.error("If you really intend to do this, set ALLOW_PRODUCTION_SEED=true in your environment.\n");
+    process.exit(1);
+  }
+
   if (!MONGODB_URI) {
     throw new Error("MONGODB_URI is not defined in environment variables.");
   }

@@ -59,7 +59,7 @@ function CreateCampaignForm() {
     isRetargeting ? "High-Intent Leads Segment" : "CSV Upload Contact List"
   );
   const [recipientCount, setRecipientCount] = useState(0);
-  const [destinationUrl, setDestinationUrl] = useState("https://mybrand.com/offer");
+  const [destinationUrl, setDestinationUrl] = useState("https://yourwebsite.com/offer");
   const [trackingFormat, setTrackingFormat] = useState<"numeric" | "alphanumeric">("alphanumeric");
   const [trackingLength, setTrackingLength] = useState(6);
   const [urlPrefix, setUrlPrefix] = useState("eid");
@@ -492,9 +492,7 @@ function CreateCampaignForm() {
                   onChange={(e) => setSenderId(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="8809612781020">8809612781020 (ZendSMS Official)</option>
-                  <option value="SMSPRO">SMSPRO</option>
-                  <option value="MYBRAND">MYBRAND</option>
+                  <option value="8809612781020">8809612781020 (Official ZendSMS Sender ID)</option>
                 </select>
                 <p className="text-[11px] text-slate-400 mt-1">Sender IDs registered with ZendSMS gateway.</p>
               </div>
@@ -959,7 +957,7 @@ function CreateCampaignForm() {
                   value={destinationUrl}
                   onChange={(e) => setDestinationUrl(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://mybrand.com/special-offer"
+                  placeholder="https://yourwebsite.com/special-offer"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">Users clicking the SMS short link will redirect here.</p>
               </div>

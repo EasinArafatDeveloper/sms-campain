@@ -25,10 +25,10 @@ const OrganizationSchema = new Schema<IOrganizationDocument>(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     plan: { type: String, enum: ["starter", "growth", "enterprise"], default: "growth" },
     status: { type: String, enum: ["active", "suspended"], default: "active" },
-    smsCredits: { type: Number, default: 20 },
-    senderIds: { type: [String], default: ["MYBRAND", "SMSPRO", "8809612781020"] },
+    smsCredits: { type: Number, default: 0 },
+    senderIds: { type: [String], default: ["8809612781020"] },
     defaultSenderId: { type: String, default: "8809612781020" },
-    trackingDomain: { type: String, default: "https://go.mybrand.com" },
+    trackingDomain: { type: String, default: "https://sms-campain.vercel.app" },
     settings: {
       defaultTrackingLength: { type: Number, default: 6 },
       defaultTrackingFormat: { type: String, enum: ["numeric", "alphanumeric"], default: "numeric" },

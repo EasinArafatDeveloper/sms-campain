@@ -188,7 +188,7 @@ export default function LandingPage() {
             <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 dark:text-slate-400 font-semibold">
               <div className="flex items-center gap-2">
                 <Icon3DShield size={20} />
-                <span>99.4% Delivery Success Rate</span>
+                <span>Direct Carrier DLR & Delivery Tracking</span>
               </div>
               <div className="flex items-center gap-2">
                 <Icon3DLightning size={20} />
@@ -201,11 +201,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Hero Visual Mockup: Dynamic Phone Simulator (Theme-Adaptive!) + Live Telemetry Feed */}
+          {/* Hero Visual Mockup: Dynamic Phone Simulator + Live Telemetry Feed Showcase */}
           <div className="mt-14 max-w-5xl mx-auto rounded-3xl p-1.5 bg-gradient-to-b from-blue-500/30 via-indigo-500/20 to-slate-200 dark:from-slate-700/60 dark:via-slate-800/30 dark:to-slate-900/10 shadow-2xl backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50">
             <div className="bg-white/95 dark:bg-slate-900/90 rounded-[22px] p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center shadow-lg transition-colors duration-300">
               
-              {/* Left Column: Interactive Phone Simulation Preview (Theme-Adaptive: Silver Titanium in Light / Stealth Obsidian in Dark) */}
+              {/* Left Column: Interactive Phone Simulation Preview */}
               <div className="lg:col-span-5 flex justify-center">
                 <div className="w-[290px] bg-gradient-to-b from-slate-200 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 rounded-[42px] p-3.5 border-[5px] border-slate-300 dark:border-slate-800 shadow-2xl relative text-slate-900 dark:text-white transition-all duration-300">
                   
@@ -251,7 +251,7 @@ export default function LandingPage() {
                           Special offer is live! Get 20% discount today. Click here:
                         </p>
                         <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-300 font-mono text-[10px] break-all font-bold flex items-center justify-between">
-                          <span>https://sms-campain.vercel.app/t/646842</span>
+                          <span>https://go.yourbrand.com/t/646842</span>
                           <Icon3DCursor size={18} className="shrink-0 animate-bounce" />
                         </div>
                       </div>
@@ -270,29 +270,29 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Right Column: Live Telemetry & Control Dashboard Preview */}
+              {/* Right Column: Interactive UI Simulation Preview */}
               <div className="lg:col-span-7 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Live Campaign Attribution Telemetry</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Campaign Attribution Simulator</span>
                   </div>
-                  <Badge variant="success" className="text-[10px] font-bold">Real-time Active</Badge>
+                  <Badge variant="outline" className="text-[10px] font-bold text-blue-600 border-blue-200">Interactive Preview (Sample)</Badge>
                 </div>
 
-                {/* 3 Live Stream Cards */}
+                {/* 3 Live Stream Cards (Explicitly marked as Sample simulation) */}
                 <div className="space-y-2.5 font-mono text-xs">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/90 flex items-center justify-between hover:border-blue-500/40 transition-colors shadow-xs">
                     <div className="flex items-center gap-2.5">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
                       <div>
-                        <span className="text-slate-900 dark:text-slate-300 font-bold font-sans">0171****456</span>
+                        <span className="text-slate-900 dark:text-slate-300 font-bold font-sans">Sample Contact #1</span>
                         <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-2 font-mono">ID: #646842</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-purple-600 dark:text-purple-400 text-[11px] font-sans font-bold">3 Clicks (High Intent)</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">2s ago</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">Sample</span>
                     </div>
                   </div>
 
@@ -300,13 +300,13 @@ export default function LandingPage() {
                     <div className="flex items-center gap-2.5">
                       <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />
                       <div>
-                        <span className="text-slate-900 dark:text-slate-300 font-bold font-sans">0182****890</span>
+                        <span className="text-slate-900 dark:text-slate-300 font-bold font-sans">Sample Contact #2</span>
                         <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-2 font-mono">ID: #974799</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-blue-600 dark:text-blue-400 text-[11px] font-sans font-bold">1 Click (First Touch)</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">14s ago</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">Sample</span>
                     </div>
                   </div>
 
@@ -320,24 +320,24 @@ export default function LandingPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-slate-500 dark:text-slate-400 text-[11px] font-sans">Filtered (No Fake Count)</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">1m ago</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans">Filtered</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Micro Stats Bar */}
+                {/* Architecture Highlights Bar */}
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-center shadow-xs">
-                    <div className="text-lg font-black text-slate-900 dark:text-white font-sans">14.2%</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">Avg Click Rate (CTR)</div>
+                    <div className="text-base font-black text-slate-900 dark:text-white font-sans">6-Digit</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">Cryptographic Links</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-center shadow-xs">
-                    <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-sans">28.6%</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">High Intent Ratio</div>
+                    <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-sans">Zero Bot</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">Crawler Shield</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 text-center shadow-xs">
-                    <div className="text-lg font-black text-blue-600 dark:text-blue-400 font-sans">0.0ms</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">Collision Retries</div>
+                    <div className="text-base font-black text-blue-600 dark:text-blue-400 font-sans">BYOK / Shared</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">Gateway Flexibility</div>
                   </div>
                 </div>
               </div>

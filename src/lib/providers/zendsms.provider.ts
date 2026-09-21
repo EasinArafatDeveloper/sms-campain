@@ -92,7 +92,10 @@ export class ZendSmsProvider implements ISmsProvider {
         responseData.message_id ||
         responseData.data?.id ||
         responseData.id ||
-        `ZEND-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+        responseData.data?.msg_id ||
+        responseData.msg_id ||
+        responseData.data?.messageId ||
+        responseData.messageId;
 
       if (!isSuccess && response.status === 404) {
         // Fallback: Simple URL API if REST route is not routed
@@ -117,29 +120,38 @@ export class ZendSmsProvider implements ISmsProvider {
             fallbackData.code === 1000 ||
             fallbackData.status === "QUEUED");
 
+        const fallbackMessageId =
+          fallbackData.data?.message_id ||
+          fallbackData.message_id ||
+          fallbackData.data?.id ||
+          fallbackData.id ||
+          fallbackData.data?.msg_id ||
+          fallbackData.msg_id;
+
         return {
-          success: fallbackSuccess,
+          success: fallbackSuccess && Boolean(fallbackMessageId),
           provider: this.name,
-          providerMessageId:
-            fallbackData.data?.message_id ||
-            fallbackData.message_id ||
-            messageId,
+          providerMessageId: fallbackMessageId,
           statusCode: fallbackData.code || fallbackRes.status,
           rawResponse: fallbackData,
-          error: fallbackSuccess
+          error: fallbackSuccess && Boolean(fallbackMessageId)
             ? undefined
+            : !fallbackMessageId && fallbackSuccess
+            ? "Gateway response missing message_id"
             : fallbackData.message || fallbackText,
         };
       }
 
       return {
-        success: isSuccess,
+        success: isSuccess && Boolean(messageId),
         provider: this.name,
         providerMessageId: messageId,
         statusCode: responseData.code || response.status,
         rawResponse: responseData,
-        error: isSuccess
+        error: isSuccess && Boolean(messageId)
           ? undefined
+          : isSuccess && !messageId
+          ? "Gateway response missing message_id"
           : responseData.message || responseData.error || responseText,
       };
     } catch (err: any) {
