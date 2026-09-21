@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "reset": "tsx scripts/reset-db.ts",
+    "setup:admin": "tsx scripts/create-superadmin.ts",
     "worker": "tsx scripts/worker.ts",
     "test": "vitest run"
   },

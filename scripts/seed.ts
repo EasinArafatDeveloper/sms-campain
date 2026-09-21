@@ -18,11 +18,12 @@ import {
   NotificationModel,
 } from "../src/lib/db/models";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://easinnextleaders_db_user:SXOqQezYCRdwSzVW@cluster0.qnhfjkl.mongodb.net/smspro_production?retryWrites=true&w=majority";
+const MONGODB_URI = process.env.MONGODB_URI;
 
 async function seed() {
+  if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI is not defined in environment variables.");
+  }
   console.log("[Seed] Connecting to MongoDB Atlas...");
   await mongoose.connect(MONGODB_URI, {
     serverSelectionTimeoutMS: 15000,

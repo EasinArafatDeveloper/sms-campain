@@ -10,7 +10,6 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
 import {
@@ -21,8 +20,8 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("omer@smspro.io");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,11 +48,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickDemo = () => {
-    setEmail("omer@smspro.io");
-    setPassword("password123");
   };
 
   return (
@@ -165,23 +159,6 @@ export default function LoginPage() {
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="••••••••"
                     />
-                  </div>
-                </div>
-
-                {/* 1-Click Demo Helper */}
-                <div
-                  onClick={handleQuickDemo}
-                  className="p-3 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100/70 dark:hover:bg-blue-950/60 rounded-xl border border-blue-200 dark:border-blue-800/40 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      1-Click Demo Account Preset
-                    </span>
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 underline font-bold">Apply</span>
-                  </div>
-                  <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-1 font-mono">
-                    omer@smspro.io / password123 (Owner)
                   </div>
                 </div>
               </CardContent>
