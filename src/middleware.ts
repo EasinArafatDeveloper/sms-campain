@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const AUTH_SECRET = process.env.AUTH_SECRET || "smspro_dev_secret_key_1234567890123456";
+const AUTH_SECRET = process.env.AUTH_SECRET || "";
 const secretKey = new TextEncoder().encode(AUTH_SECRET);
 const SESSION_COOKIE_NAME = "smspro_session";
 

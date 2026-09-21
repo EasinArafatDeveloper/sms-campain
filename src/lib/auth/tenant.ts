@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "./session";
 import { PlatformRole, UserRole } from "@/types";
+import { connectToDatabase } from "@/lib/db/connect";
+import { UserModel, OrganizationModel } from "@/lib/db/models";
 
 export interface TenantContext<T = any> {
   organizationId: string;
@@ -8,12 +10,15 @@ export interface TenantContext<T = any> {
   userEmail: string;
   userName: string;
   role: UserRole;
-  platformRole?: PlatformRole;
+  platformRole: PlatformRole;
+  isPhoneVerified: boolean;
   params: T;
 }
 
 export interface WithTenantOptions {
   requireSuperAdmin?: boolean;
+  requiredRoles?: UserRole[];
+  requirePhoneVerified?: boolean;
 }
 
 export type TenantHandler<T = any> = (
@@ -23,7 +28,8 @@ export type TenantHandler<T = any> = (
 
 /**
  * Higher-order API route wrapper that strictly enforces authentication, tenant context,
- * and role-based permissions across all SaaS endpoints. Eliminates unauthenticated demo fallbacks.
+ * live DB status checks (disabled users / suspended orgs / revoked superadmins),
+ * and role-based permissions across all SaaS endpoints.
  */
 export function withTenant<T = any>(
   handler: TenantHandler<T>,
@@ -46,11 +52,66 @@ export function withTenant<T = any>(
         );
       }
 
-      if (options.requireSuperAdmin && session.platformRole !== "superadmin") {
+      await connectToDatabase();
+
+      // Live database verification for instant token revocation & status check
+      const [user, org] = await Promise.all([
+        UserModel.findById(session.userId).select("status platformRole role isPhoneVerified").lean(),
+        OrganizationModel.findById(session.organizationId).select("status smsCredits").lean(),
+      ]);
+
+      if (!user || user.status === "disabled") {
+        return NextResponse.json(
+          {
+            error: "Forbidden",
+            message: "Your account is disabled or deactivated. Access denied.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (!org || org.status === "suspended") {
+        return NextResponse.json(
+          {
+            error: "Forbidden",
+            message: "Your organization workspace has been suspended. Please contact support.",
+          },
+          { status: 403 }
+        );
+      }
+
+      // Check SuperAdmin platform privilege against live DB
+      if (options.requireSuperAdmin && user.platformRole !== "superadmin") {
         return NextResponse.json(
           {
             error: "Forbidden",
             message: "SuperAdmin platform privileges are required",
+          },
+          { status: 403 }
+        );
+      }
+
+      // Check Role-Based Access Control (RBAC)
+      const effectiveRole = (user.role as UserRole) || (session.role as UserRole) || "owner";
+      if (options.requiredRoles && options.requiredRoles.length > 0) {
+        if (!options.requiredRoles.includes(effectiveRole) && user.platformRole !== "superadmin") {
+          return NextResponse.json(
+            {
+              error: "Forbidden",
+              message: `Insufficient permissions. Required role: ${options.requiredRoles.join(", ")}`,
+            },
+            { status: 403 }
+          );
+        }
+      }
+
+      // Check Phone Verification guard if requested
+      if (options.requirePhoneVerified && !user.isPhoneVerified && user.platformRole !== "superadmin") {
+        return NextResponse.json(
+          {
+            error: "Forbidden",
+            message: "Phone verification is required before performing this action. Please verify your phone number.",
+            code: "PHONE_NOT_VERIFIED",
           },
           { status: 403 }
         );
@@ -63,8 +124,9 @@ export function withTenant<T = any>(
         userId: session.userId,
         userEmail: session.email,
         userName: session.name,
-        role: (session.role as UserRole) || "owner",
-        platformRole: (session.platformRole as PlatformRole) || "user",
+        role: effectiveRole,
+        platformRole: (user.platformRole as PlatformRole) || (session.platformRole as PlatformRole) || "user",
+        isPhoneVerified: !!user.isPhoneVerified,
         params: resolvedParams,
       };
 

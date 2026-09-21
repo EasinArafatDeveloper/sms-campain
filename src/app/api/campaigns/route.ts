@@ -19,31 +19,35 @@ export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   }
 });
 
-export const POST = withTenant(async (req: NextRequest, ctx: TenantContext) => {
-  try {
-    const body = await req.json();
-    const validated = CreateCampaignSchema.safeParse(body);
+export const POST = withTenant(
+  async (req: NextRequest, ctx: TenantContext) => {
+    try {
+      const body = await req.json();
+      const validated = CreateCampaignSchema.safeParse(body);
 
-    if (!validated.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validated.error.format() },
-        { status: 400 }
+      if (!validated.success) {
+        return NextResponse.json(
+          { error: "Validation failed", details: validated.error.format() },
+          { status: 400 }
+        );
+      }
+
+      const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+      const proto = req.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      const requestOrigin = host ? `${proto}://${host}` : undefined;
+
+      const campaign = await CampaignService.createCampaign(
+        ctx.organizationId,
+        ctx.userId,
+        validated.data,
+        { baseUrl: requestOrigin ? `${requestOrigin}/t` : undefined }
       );
+
+      return NextResponse.json(campaign, { status: 201 });
+    } catch (err: any) {
+      console.error("[Campaigns API] Create error:", err);
+      return NextResponse.json({ error: err.message || "Failed to create campaign" }, { status: 500 });
     }
-
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const proto = req.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-    const requestOrigin = host ? `${proto}://${host}` : undefined;
-
-    const campaign = await CampaignService.createCampaign(
-      ctx.organizationId,
-      ctx.userId,
-      validated.data as any,
-      { baseUrl: requestOrigin ? `${requestOrigin}/t` : undefined }
-    );
-    return NextResponse.json({ success: true, campaign }, { status: 201 });
-  } catch (err: any) {
-    console.error("[Campaigns API] Create error:", err);
-    return NextResponse.json({ error: err.message || "Failed to create campaign" }, { status: 500 });
-  }
-});
+  },
+  { requirePhoneVerified: true, requiredRoles: ["owner", "admin"] }
+);

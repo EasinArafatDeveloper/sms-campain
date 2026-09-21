@@ -3,12 +3,12 @@ import { connectToDatabase } from "@/lib/db/connect";
 import { UserModel, OrganizationModel, MembershipModel } from "@/lib/db/models";
 import { hashPassword, signSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { RegisterSchema } from "@/lib/validations";
-import { rateLimit } from "@/lib/security";
+import { rateLimit, getClientIp } from "@/lib/security";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    const ip = getClientIp(req);
     const limiter = await rateLimit(`register:${ip}`, 5, 15 * 60 * 1000); // 5 registrations per 15 min
 
     if (!limiter.allowed) {
@@ -44,12 +44,12 @@ export async function POST(req: NextRequest) {
     const uniqueSuffix = crypto.randomBytes(3).toString("hex");
     const slug = `${rawSlug}-${uniqueSuffix}`;
 
-    // Create Tenant Workspace with 20 Free Trial SMS Credits
+    // Create Tenant Workspace (0 initial credits; 20 free trial credits granted upon phone OTP verification)
     const org = await OrganizationModel.create({
       name: validated.data.organizationName,
       slug,
       plan: "growth",
-      smsCredits: 20,
+      smsCredits: 0,
       senderIds: ["8809612781020", "SMSPRO", "MYBRAND"],
       defaultSenderId: "8809612781020",
       trackingDomain: "https://postman.asia",

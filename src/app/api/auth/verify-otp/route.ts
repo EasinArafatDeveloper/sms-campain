@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connect";
-import { PhoneVerificationModel, UserModel } from "@/lib/db/models";
+import { PhoneVerificationModel, UserModel, OrganizationModel } from "@/lib/db/models";
 import { getSession } from "@/lib/auth";
 import { VerifyOtpSchema } from "@/lib/validations";
 import { normalizePhoneNumber } from "@/lib/utils";
+import { env } from "@/lib/env";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -45,9 +46,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const inputHash = crypto.createHash("sha256").update(validated.data.code.trim()).digest("hex");
+    // Recompute salted HMAC
+    const inputHash = crypto
+      .createHmac("sha256", env.AUTH_SECRET)
+      .update(`${record.salt}:${normalized}:${validated.data.code.trim()}`)
+      .digest("hex");
 
-    if (inputHash !== record.hashedCode) {
+    const inputHashBuffer = Buffer.from(inputHash, "utf-8");
+    const storedHashBuffer = Buffer.from(record.hashedCode, "utf-8");
+
+    const isMatch =
+      inputHashBuffer.length === storedHashBuffer.length &&
+      crypto.timingSafeEqual(inputHashBuffer, storedHashBuffer);
+
+    if (!isMatch) {
       record.attempts += 1;
       await record.save();
       const remainingAttempts = 5 - record.attempts;
@@ -64,19 +76,35 @@ export async function POST(req: NextRequest) {
     record.verified = true;
     await record.save();
 
-    // If active session exists, mark user phone verified
+    // If active session exists, mark user phone verified and award initial trial credits
     const session = await getSession();
+    let creditsAwarded = false;
+
     if (session?.userId) {
-      await UserModel.findByIdAndUpdate(session.userId, {
-        phone: normalized,
-        isPhoneVerified: true,
-      });
+      const user = await UserModel.findById(session.userId);
+      if (user) {
+        const wasVerified = user.isPhoneVerified;
+        user.phone = normalized;
+        user.isPhoneVerified = true;
+        await user.save();
+
+        // If user was not verified before, award 20 free trial credits to their organization
+        if (!wasVerified && user.defaultOrganizationId) {
+          await OrganizationModel.findByIdAndUpdate(user.defaultOrganizationId, {
+            $inc: { smsCredits: 20 },
+          });
+          creditsAwarded = true;
+        }
+      }
     }
 
     return NextResponse.json({
       success: true,
       verified: true,
-      message: "Phone number verified successfully!",
+      creditsAwarded,
+      message: creditsAwarded
+        ? "Phone number verified! 20 free trial SMS credits have been added to your workspace."
+        : "Phone number verified successfully!",
     });
   } catch (err: any) {
     console.error("[OTP Verify API] Error:", err);

@@ -4,12 +4,13 @@ import { PhoneVerificationModel } from "@/lib/db/models";
 import { ZendSmsProvider } from "@/lib/providers/zendsms.provider";
 import { SendOtpSchema } from "@/lib/validations";
 import { normalizePhoneNumber } from "@/lib/utils";
-import { rateLimit } from "@/lib/security";
+import { rateLimit, getClientIp } from "@/lib/security";
+import { env } from "@/lib/env";
 import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    const ip = getClientIp(req);
     const body = await req.json().catch(() => ({}));
     const validated = SendOtpSchema.safeParse(body);
 
@@ -28,20 +29,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limit OTP requests (3 requests per 10 minutes per phone/IP)
-    const limiter = await rateLimit(`otp:${normalized}:${ip}`, 3, 10 * 60 * 1000);
-    if (!limiter.allowed) {
+    // 1. Strict rate limit per destination phone (max 3 requests per 10 min) to prevent SMS bombing
+    const phoneLimiter = await rateLimit(`otp:phone:${normalized}`, 3, 10 * 60 * 1000);
+    if (!phoneLimiter.allowed) {
       return NextResponse.json(
-        { error: "Too many OTP requests. Please wait a few minutes before requesting another code." },
+        { error: "Too many OTP requests for this phone number. Please wait 10 minutes before requesting another code." },
+        { status: 429 }
+      );
+    }
+
+    // 2. Rate limit per client IP (max 10 requests per 10 min)
+    const ipLimiter = await rateLimit(`otp:ip:${ip}`, 10, 10 * 60 * 1000);
+    if (!ipLimiter.allowed) {
+      return NextResponse.json(
+        { error: "Too many OTP requests from your network. Please wait a few minutes." },
         { status: 429 }
       );
     }
 
     await connectToDatabase();
 
-    // Generate secure 6-digit OTP
+    // Generate secure 6-digit OTP with cryptographic random salt
     const rawOtp = (100000 + crypto.randomInt(900000)).toString();
-    const hashedCode = crypto.createHash("sha256").update(rawOtp).digest("hex");
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hashedCode = crypto
+      .createHmac("sha256", env.AUTH_SECRET)
+      .update(`${salt}:${normalized}:${rawOtp}`)
+      .digest("hex");
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Store in PhoneVerification collection
@@ -49,6 +63,7 @@ export async function POST(req: NextRequest) {
     await PhoneVerificationModel.create({
       phone: normalized,
       hashedCode,
+      salt,
       attempts: 0,
       verified: false,
       expiresAt,

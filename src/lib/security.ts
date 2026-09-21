@@ -2,6 +2,32 @@
  * Security & Input Sanitization Utilities
  */
 
+import { NextRequest } from "next/server";
+
+/**
+ * Extracts a sanitized, non-spoofable single client IP address from request headers.
+ */
+export function getClientIp(req: NextRequest | Headers | { headers: Headers }): string {
+  let headers: Headers;
+  if ("headers" in req && req.headers instanceof Headers) {
+    headers = req.headers;
+  } else if (req instanceof Headers) {
+    headers = req;
+  } else if ("headers" in req) {
+    headers = (req as any).headers;
+  } else {
+    return "unknown";
+  }
+
+  const xForwardedFor = headers.get("x-forwarded-for");
+  if (xForwardedFor) {
+    const firstIp = xForwardedFor.split(",")[0].trim();
+    if (firstIp) return firstIp;
+  }
+
+  return headers.get("x-real-ip")?.trim() || headers.get("cf-connecting-ip")?.trim() || "unknown";
+}
+
 /**
  * Escapes special regex characters in user-provided search strings to prevent ReDoS / RegExp Injection.
  */

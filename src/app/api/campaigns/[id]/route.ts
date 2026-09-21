@@ -43,23 +43,26 @@ export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
   }
 });
 
-export const DELETE = withTenant(async (req: NextRequest, ctx: TenantContext) => {
-  try {
-    const id = ctx.params.id;
-    const orgId = ctx.organizationId;
-    const userId = ctx.userId;
+export const DELETE = withTenant(
+  async (req: NextRequest, ctx: TenantContext) => {
+    try {
+      const id = ctx.params.id;
+      const orgId = ctx.organizationId;
+      const userId = ctx.userId;
 
-    const result = await CampaignService.deleteCampaign(orgId, id, userId);
-    if (!result.success) {
-      return NextResponse.json({ error: "Campaign not found or already deleted" }, { status: 404 });
+      const result = await CampaignService.deleteCampaign(orgId, id, userId);
+      if (!result.success) {
+        return NextResponse.json({ error: "Campaign not found or already deleted" }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Campaign and associated tracking resources deleted",
+      });
+    } catch (err: any) {
+      console.error("[Campaign API] Delete error:", err);
+      return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Campaign and associated tracking resources deleted",
-    });
-  } catch (err: any) {
-    console.error("[Campaign API] Delete error:", err);
-    return NextResponse.json({ error: "Failed to delete campaign" }, { status: 500 });
-  }
-});
+  },
+  { requiredRoles: ["owner"] }
+);

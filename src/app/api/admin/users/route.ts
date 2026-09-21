@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTenant, TenantContext } from "@/lib/auth";
-import { UserModel, OrganizationModel, CampaignModel, DeliveryJobModel } from "@/lib/db/models";
+import { UserModel, OrganizationModel, CampaignModel, DeliveryJobModel, AuditLogModel } from "@/lib/db/models";
 import { connectToDatabase } from "@/lib/db/connect";
 import { escapeRegex } from "@/lib/security";
+import mongoose from "mongoose";
 
 export const GET = withTenant(
   async (req: NextRequest) => {
@@ -90,7 +91,7 @@ export const GET = withTenant(
 );
 
 export const PATCH = withTenant(
-  async (req: NextRequest) => {
+  async (req: NextRequest, ctx: TenantContext) => {
     try {
       await connectToDatabase();
       const body = await req.json();
@@ -112,12 +113,31 @@ export const PATCH = withTenant(
         "-passwordHash"
       );
 
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
       // If user disabled, also suspend their default organization
       if (status && user?.defaultOrganizationId) {
         await OrganizationModel.findByIdAndUpdate(user.defaultOrganizationId, {
           status: status === "active" ? "active" : "suspended",
         });
       }
+
+      // Log SuperAdmin Action
+      await AuditLogModel.create({
+        organizationId: user.defaultOrganizationId || new mongoose.Types.ObjectId(ctx.organizationId),
+        userId: new mongoose.Types.ObjectId(ctx.userId),
+        userName: ctx.userName,
+        action: "ADMIN_UPDATE_USER",
+        resourceType: "User",
+        resourceId: userId,
+        metadata: {
+          adminEmail: ctx.userEmail,
+          targetUserEmail: user.email,
+          updatedFields: updateData,
+        },
+      });
 
       return NextResponse.json({ success: true, user });
     } catch (err: any) {
