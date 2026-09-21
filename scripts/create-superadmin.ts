@@ -46,7 +46,7 @@ async function main() {
   let org = await OrganizationModel.findOne({ slug: "master-admin" });
   if (!org) {
     org = await OrganizationModel.create({
-      name: "SMSPro HQ",
+      name: "Postman HQ",
       slug: "master-admin",
       plan: "enterprise",
       status: "active",

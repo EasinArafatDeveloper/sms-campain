@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { BRAND } from "@/lib/brand";
 
 const AUTH_SECRET = process.env.AUTH_SECRET || "";
 const secretKey = new TextEncoder().encode(AUTH_SECRET);
-const SESSION_COOKIE_NAME = "smspro_session";
+const SESSION_COOKIE_NAME = `${BRAND.slug}_session`;
 
 // Whitelisted public routes that don't require session
 const PUBLIC_FILE_REGEX = /\.(.*)$/;

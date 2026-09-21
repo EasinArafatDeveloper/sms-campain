@@ -3,8 +3,9 @@ import { verifySessionToken, SessionPayload } from "./jwt";
 import { connectToDatabase } from "@/lib/db/connect";
 import { UserModel, OrganizationModel, MembershipModel } from "@/lib/db/models";
 import bcrypt from "bcryptjs";
+import { BRAND } from "@/lib/brand";
 
-export const SESSION_COOKIE_NAME = "smspro_session";
+export const SESSION_COOKIE_NAME = `${BRAND.slug}_session`;
 
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
+import { LogoMark } from "@/components/ui/Logo";
 import {
   LayoutDashboard,
   Send,
@@ -68,17 +70,12 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Brand Header */}
       <div className="h-16 px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-xs">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <LogoMark size={36} />
           <div>
-            <div className="font-bold text-base tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              SMSPro
-              <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-900/60">
-                SaaS
-              </span>
+            <div className="font-display font-extrabold text-base tracking-tight text-slate-900 dark:text-slate-100">
+              {BRAND.name}
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">Customer Engagement</div>
+            <div className="text-[11px] text-slate-400 font-medium">{BRAND.tagline}</div>
           </div>
         </Link>
 

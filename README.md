@@ -1,6 +1,6 @@
-# SMSPro — Trackable SMS Marketing & Customer Engagement Platform
+# Postman — Trackable SMS Marketing & Customer Engagement Platform
 
-SMSPro is a production-grade, multi-tenant enterprise SaaS platform engineered for trackable SMS marketing, per-recipient link click attribution, real-time engagement intelligence, and algorithmic high-intent lead retargeting.
+Postman is a production-grade, multi-tenant enterprise SaaS platform engineered for trackable SMS marketing, per-recipient link click attribution, real-time engagement intelligence, and algorithmic high-intent lead retargeting.
 
 ---
 

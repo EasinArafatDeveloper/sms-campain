@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"general" | "gateway" | "team">("gateway");
@@ -41,7 +42,7 @@ export default function SettingsPage() {
 
   // Test SMS State
   const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState("Test SMS verification from SMSPro ZendSMS Gateway.");
+  const [testMessage, setTestMessage] = useState(`Test SMS verification from ${BRAND.name}.`);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
 
@@ -231,7 +232,7 @@ export default function SettingsPage() {
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                       {balance !== null
                         ? "Connected via custom ZendSMS API credentials."
-                        : "Managed via SMSPro Central Gateway (1 Credit = 1 SMS)."}
+                        : `Managed via the ${BRAND.name} shared gateway (1 Credit = 1 SMS).`}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -280,7 +281,7 @@ export default function SettingsPage() {
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
                     <span className="text-[10px] text-slate-500 mt-1 block">
-                      Leave empty to use SMSPro Central Gateway with your workspace credits.
+                      Leave empty to use the {BRAND.name} shared gateway with your workspace credits.
                     </span>
                   </div>
                   <div>

@@ -3,6 +3,7 @@ import { withTenant } from "@/lib/auth";
 import { OrganizationModel, UserModel, AuditLogModel } from "@/lib/db/models";
 import { connectToDatabase } from "@/lib/db/connect";
 import Papa from "papaparse";
+import { BRAND } from "@/lib/brand";
 
 export const GET = withTenant(
   async (req: NextRequest) => {
@@ -50,7 +51,7 @@ export const GET = withTenant(
         });
 
         csvData = Papa.unparse(rows);
-        filename = `smspro-tenants-${new Date().toISOString().slice(0, 10)}.csv`;
+        filename = `${BRAND.slug}-tenants-${new Date().toISOString().slice(0, 10)}.csv`;
       } else if (type === "users") {
         const users = await UserModel.find({})
           .populate("defaultOrganizationId", "name slug")
@@ -73,7 +74,7 @@ export const GET = withTenant(
         }));
 
         csvData = Papa.unparse(rows);
-        filename = `smspro-users-${new Date().toISOString().slice(0, 10)}.csv`;
+        filename = `${BRAND.slug}-users-${new Date().toISOString().slice(0, 10)}.csv`;
       } else if (type === "audit-logs") {
         const logs = await AuditLogModel.find({})
           .sort({ createdAt: -1 })
@@ -95,7 +96,7 @@ export const GET = withTenant(
         }));
 
         csvData = Papa.unparse(rows);
-        filename = `smspro-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+        filename = `${BRAND.slug}-audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
       } else {
         return NextResponse.json({ error: "Invalid export type. Allowed: tenants, users, audit-logs" }, { status: 400 });
       }

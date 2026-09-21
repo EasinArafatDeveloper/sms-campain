@@ -4,9 +4,9 @@ import { DeliveryService } from "../src/lib/services/delivery.service";
 import { OrganizationModel } from "../src/lib/db/models";
 
 async function runWorkerLoop() {
-  console.log("[SMSPro Background Worker] Starting worker process...");
+  console.log("[Postman Background Worker] Starting worker process...");
   await connectToDatabase();
-  console.log("[SMSPro Background Worker] Connected to database.");
+  console.log("[Postman Background Worker] Connected to database.");
 
   while (true) {
     try {

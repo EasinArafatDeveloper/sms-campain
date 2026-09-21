@@ -60,8 +60,8 @@ async function resetClean() {
 
   const org = await OrganizationModel.create({
     _id: new mongoose.Types.ObjectId("670000000000000000000001"),
-    name: "SMSPro Enterprise",
-    slug: "smspro-enterprise",
+    name: "Postman HQ",
+    slug: "postman-hq",
     plan: "enterprise",
     status: "active",
     senderIds: ["8809612781020", "MYBRAND", "SMSPRO"],
@@ -78,7 +78,7 @@ async function resetClean() {
   const passwordHash = await bcrypt.hash("Admin@SMSPro2026!", 10);
 
   const admin = await UserModel.create({
-    name: "SMSPro Admin",
+    name: "Postman Admin",
     email: "admin@smspro.io",
     passwordHash,
     role: "owner",

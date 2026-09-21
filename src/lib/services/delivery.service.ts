@@ -12,6 +12,7 @@ import {
 import { getSmsProviderForOrg } from "../providers";
 import { DeliveryStatus, PaginatedResult } from "@/types";
 import { escapeRegex } from "../security";
+import { BRAND } from "../brand";
 
 export interface DeliveryQueueStats {
   totalQueued: number;
@@ -191,7 +192,7 @@ export class DeliveryService {
         : 100;
 
     return {
-      provider: providerCred?.apiKey ? "ZENDSMS (BYOK)" : "SMSPRO SHARED GATEWAY",
+      provider: providerCred?.apiKey ? "ZENDSMS (BYOK)" : `${BRAND.name.toUpperCase()} SHARED GATEWAY`,
       status: health.healthy ? "operational" : "degraded",
       averageResponseMs: health.responseTimeMs || 0,
       successRate,

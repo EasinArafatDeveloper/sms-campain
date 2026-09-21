@@ -27,6 +27,7 @@ import {
   CheckCheck,
   FileSpreadsheet,
 } from "lucide-react";
+import { BRAND } from "@/lib/brand";
 
 export default function CreateCampaignPage() {
   return (
@@ -334,7 +335,7 @@ function CreateCampaignForm() {
     const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent("phone,name,custom_id\n8801711234567,Rahim Ahmed,USR-101\n8801812345678,Karim Uddin,USR-102\n8801912345679,Farhana Islam,USR-103\n8801612345670,Tanvir Hasan,USR-104\n");
     const link = document.createElement("a");
     link.setAttribute("href", csvContent);
-    link.setAttribute("download", "smspro_contacts_sample.csv");
+    link.setAttribute("download", `${BRAND.slug}_contacts_sample.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

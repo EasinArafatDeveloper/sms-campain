@@ -49,11 +49,23 @@ export function Reveal({
 
 /* ---------------------------------------------------- Animated gradient text */
 
-export function GradientText({ children, className }: { children: React.ReactNode; className?: string }) {
+export function GradientText({
+  children,
+  className,
+  tone = "auto",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** "onDark" forces the light gradient (for text sitting on an always-dark background) */
+  tone?: "auto" | "onDark";
+}) {
   return (
     <span
       className={cn(
-        "bg-gradient-to-r from-indigo-600 via-blue-500 to-cyan-500 bg-[length:200%_auto] bg-clip-text text-transparent motion-safe:animate-gradient-x dark:from-indigo-300 dark:via-sky-300 dark:to-cyan-300",
+        "bg-gradient-to-r bg-[length:200%_auto] bg-clip-text text-transparent motion-safe:animate-gradient-x",
+        tone === "onDark"
+          ? "from-indigo-300 via-sky-300 to-cyan-300"
+          : "from-indigo-600 via-blue-500 to-cyan-500 dark:from-indigo-300 dark:via-sky-300 dark:to-cyan-300",
         className
       )}
     >
@@ -80,7 +92,7 @@ export function ShimmerButton({
     <Link
       href={href}
       className={cn(
-        "group relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-xl px-6 text-sm font-semibold transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] dark:focus-visible:ring-offset-slate-950",
+        "group relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-xl px-6 text-sm font-semibold transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] dark:focus-visible:ring-offset-slate-950",
         primary
           ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 dark:bg-white dark:text-slate-950 dark:shadow-white/10"
           : "border border-slate-300 bg-white/70 text-slate-800 backdrop-blur hover:border-slate-400 hover:bg-white dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10",
@@ -130,14 +142,11 @@ export function SpotlightCard({ children, className }: { children: React.ReactNo
 
 /* -------------------------------------------------------------- Border beam */
 
-/** A light that travels around the border of its (relative, rounded) parent. */
+/** A light that sweeps along the top edge of its (relative, rounded) parent. */
 export function BorderBeam({ className }: { className?: string }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn("pointer-events-none absolute inset-0 rounded-[inherit] [mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] [mask-composite:exclude] p-px", className)}
-    >
-      <span className="absolute inset-[-100%] motion-safe:animate-spin-slow bg-[conic-gradient(from_0deg,transparent_0_300deg,rgba(99,102,241,0.9)_330deg,rgba(34,211,238,0.9)_360deg)]" />
+    <span aria-hidden="true" className={cn("pointer-events-none absolute inset-x-6 top-0 h-px overflow-hidden", className)}>
+      <span className="block h-px w-1/3 bg-gradient-to-r from-transparent via-indigo-500 to-transparent motion-safe:animate-beam dark:via-cyan-300" />
     </span>
   );
 }

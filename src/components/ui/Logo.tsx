@@ -21,12 +21,23 @@ export function LogoMark({ className, size = 36 }: { className?: string; size?: 
   );
 }
 
-export function Logo({ className, size = 36, showName = true }: { className?: string; size?: number; showName?: boolean }) {
+export function Logo({
+  className,
+  size = 36,
+  showName = true,
+  tone = "auto",
+}: {
+  className?: string;
+  size?: number;
+  showName?: boolean;
+  /** "light" forces white text (use on an always-dark background) */
+  tone?: "auto" | "light";
+}) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark size={size} />
       {showName && (
-        <span className="font-display text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <span className={cn("font-display text-lg font-extrabold tracking-tight", tone === "light" ? "text-white" : "text-slate-900 dark:text-white")}>
           {BRAND.name}
         </span>
       )}

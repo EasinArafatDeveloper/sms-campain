@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { BRAND } from "@/lib/brand";
 
 type Theme = "light" | "dark";
 
@@ -18,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem("smspro_theme") as Theme | null;
+    const savedTheme = localStorage.getItem(`${BRAND.slug}_theme`) as Theme | null;
     if (savedTheme === "light" || savedTheme === "dark") {
       setThemeState(savedTheme);
       applyTheme(savedTheme);
@@ -42,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem("smspro_theme", newTheme);
+    localStorage.setItem(`${BRAND.slug}_theme`, newTheme);
     applyTheme(newTheme);
   };
 

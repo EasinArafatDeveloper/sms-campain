@@ -7,6 +7,7 @@ import { normalizePhoneNumber } from "@/lib/utils";
 import { rateLimit, getClientIp } from "@/lib/security";
 import { env } from "@/lib/env";
 import crypto from "crypto";
+import { BRAND } from "@/lib/brand";
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     // Send SMS via Central ZendSMS Gateway
     const provider = new ZendSmsProvider();
-    const message = `Your SMSPro verification code is: ${rawOtp}. Valid for 5 minutes. Do not share this code.`;
+    const message = `Your ${BRAND.name} verification code is: ${rawOtp}. Valid for 5 minutes. Do not share this code.`;
 
     const smsRes = await provider.sendSms({
       to: normalized,

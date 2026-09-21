@@ -77,6 +77,8 @@ const config: Config = {
         },
         "gradient-x": { "0%, 100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } },
         "spin-slow": { to: { transform: "rotate(360deg)" } },
+        "marquee-y": { from: { transform: "translateY(0)" }, to: { transform: "translateY(-50%)" } },
+        beam: { from: { transform: "translateX(-100%)" }, to: { transform: "translateX(300%)" } },
         float: { "0%, 100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-10px)" } },
       },
       animation: {
@@ -86,6 +88,8 @@ const config: Config = {
         "gradient-x": "gradient-x 8s ease infinite",
         "spin-slow": "spin-slow 6s linear infinite",
         float: "float 6s ease-in-out infinite",
+        beam: "beam 3.5s linear infinite",
+        "marquee-y": "marquee-y 16s linear infinite",
       },
       boxShadow: {
         subtle: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",

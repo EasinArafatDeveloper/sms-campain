@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connect";
 import { getSmsProviderForOrg } from "@/lib/providers";
+import { BRAND } from "@/lib/brand";
 
 export async function GET() {
   const start = Date.now();
@@ -26,7 +27,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: dbStatus === "connected" ? "healthy" : "degraded",
-    service: "SMSPro SaaS Core Engine",
+    service: `${BRAND.name} Core Engine`,
     timestamp: new Date().toISOString(),
     latencyMs: responseTime,
     checks: {
