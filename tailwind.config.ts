@@ -66,6 +66,26 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
+      keyframes: {
+        shimmer: { "0%": { transform: "translateX(-100%)" }, "60%, 100%": { transform: "translateX(100%)" } },
+        marquee: { from: { transform: "translateX(0)" }, to: { transform: "translateX(-100%)" } },
+        aurora: {
+          "0%, 100%": { transform: "translateX(-50%) translateY(0) scale(1)" },
+          "50%": { transform: "translateX(-46%) translateY(24px) scale(1.06)" },
+        },
+        "gradient-x": { "0%, 100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } },
+        "spin-slow": { to: { transform: "rotate(360deg)" } },
+        float: { "0%, 100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-10px)" } },
+      },
+      animation: {
+        shimmer: "shimmer 3.2s ease-in-out infinite",
+        marquee: "marquee 32s linear infinite",
+        aurora: "aurora 14s ease-in-out infinite",
+        "gradient-x": "gradient-x 8s ease infinite",
+        "spin-slow": "spin-slow 6s linear infinite",
+        float: "float 6s ease-in-out infinite",
       },
       boxShadow: {
         subtle: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)",

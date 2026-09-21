@@ -267,13 +267,17 @@ export interface DashboardMetrics {
   totalCampaigns: number;
   smsSent: number;
   delivered: number;
+  failed: number;
+  pendingRetry: number;
   deliveryRate: number;
+  failedRate: number;
   totalClicks: number;
   uniqueClickers: number;
   clickRate: number;
   repeatClickers: number;
   highIntentLeads: number;
   potentialReductionPercent: number;
+  dateRange: "7d" | "30d" | "90d" | "all";
   recentCampaigns: Partial<ICampaign>[];
   clickTrend: { date: string; totalClicks: number; uniqueClicks: number }[];
   funnel: {

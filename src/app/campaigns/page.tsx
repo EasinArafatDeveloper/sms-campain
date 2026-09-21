@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,10 +25,28 @@ import { formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 import { TablePageSkeleton } from "@/components/ui/Skeleton";
 
 export default function CampaignsListPage() {
+  return (
+    <Suspense fallback={<AppLayout><TablePageSkeleton titleWidth="w-72" rowCount={6} /></AppLayout>}>
+      <CampaignsListContent />
+    </Suspense>
+  );
+}
+
+function CampaignsListContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("search") || "";
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialQuery);
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Sync search when query param changes
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q !== null) {
+      setSearch(q);
+    }
+  }, [searchParams]);
 
   // Deletion state
   const [campaignToDelete, setCampaignToDelete] = useState<any | null>(null);
