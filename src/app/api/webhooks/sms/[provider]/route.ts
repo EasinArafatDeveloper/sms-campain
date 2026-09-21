@@ -14,21 +14,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   try {
     const { provider } = await params;
 
-    // Verify webhook authorization token if configured in environment
-    if (env.WEBHOOK_SECRET && env.WEBHOOK_SECRET.length > 0) {
-      const incomingRaw = (req.headers.get("x-webhook-secret") || req.headers.get("authorization") || "").trim();
-      const incoming = incomingRaw.replace(/^Bearer\s+/i, "");
+    // Verify webhook authorization token - fail-closed (503 if not configured on server)
+    const webhookSecret = env.WEBHOOK_SECRET || process.env.WEBHOOK_SECRET;
+    if (!webhookSecret || webhookSecret.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Service Unavailable", message: "Webhook secret is not configured on the server." },
+        { status: 503 }
+      );
+    }
 
-      const incomingBuffer = Buffer.from(incoming, "utf-8");
-      const secretBuffer = Buffer.from(env.WEBHOOK_SECRET, "utf-8");
+    const incomingRaw = (
+      req.headers.get("x-webhook-secret") ||
+      req.headers.get("authorization") ||
+      req.nextUrl.searchParams.get("token") ||
+      ""
+    ).trim();
+    const incoming = incomingRaw.replace(/^Bearer\s+/i, "");
 
-      const isAuthorized =
-        incomingBuffer.length === secretBuffer.length &&
-        crypto.timingSafeEqual(incomingBuffer, secretBuffer);
+    const incomingBuffer = Buffer.from(incoming, "utf-8");
+    const secretBuffer = Buffer.from(webhookSecret.trim(), "utf-8");
 
-      if (!isAuthorized) {
-        return NextResponse.json({ error: "Unauthorized webhook caller" }, { status: 401 });
-      }
+    const isAuthorized =
+      incomingBuffer.length === secretBuffer.length &&
+      crypto.timingSafeEqual(incomingBuffer, secretBuffer);
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized webhook caller" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));

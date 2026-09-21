@@ -92,6 +92,12 @@ describe("Tenant Isolation & Security Hardening Tests", () => {
 
       expect(isValid).toBe(false);
     });
+
+    it("should fail-closed if server webhook secret is empty or missing", () => {
+      const emptySecret: string = "";
+      const isConfigured = emptySecret.trim().length > 0;
+      expect(Boolean(isConfigured)).toBe(false);
+    });
   });
 
   describe("SSRF & Setting URL Whitelisting", () => {

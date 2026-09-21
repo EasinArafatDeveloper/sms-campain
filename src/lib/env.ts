@@ -10,6 +10,9 @@ const envSchema = z.object({
   ZENDSMS_BALANCE_URL: z.string().optional().default("https://api.zendsms.com/api/v1/balance"),
   WEBHOOK_SECRET: z.string().optional(),
   TRACKING_BASE_URL: z.string().optional().default("https://sms-campain.vercel.app"),
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  REDIS_URL: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -22,4 +25,7 @@ export const env = envSchema.parse({
   ZENDSMS_BALANCE_URL: process.env.ZENDSMS_BALANCE_URL,
   WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
   TRACKING_BASE_URL: process.env.TRACKING_BASE_URL,
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  REDIS_URL: process.env.REDIS_URL,
 });

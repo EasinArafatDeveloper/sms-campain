@@ -61,7 +61,7 @@ export function sanitizeUrl(url: string | undefined | null): string | null {
 }
 
 /**
- * In-memory sliding window rate limiter for brute-force and abuse protection.
+ * In-memory sliding window rate limiter fallback for local development or single-instance deployments.
  */
 interface RateLimitRecord {
   count: number;
@@ -82,11 +82,75 @@ if (typeof setInterval !== "undefined") {
   }, 60000).unref?.();
 }
 
+/**
+ * Distributed rate limiter via Upstash Redis REST HTTP API (Vercel Serverless multi-instance ready).
+ */
+async function upstashRateLimit(
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): Promise<{ allowed: boolean; remaining: number; resetAt: number } | null> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+
+  try {
+    const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+    const redisKey = `ratelimit:${key}`;
+
+    const res = await fetch(`${url.replace(/\/$/, "")}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["INCR", redisKey],
+        ["EXPIRE", redisKey, windowSeconds, "NX"],
+        ["TTL", redisKey],
+      ]),
+      // Abort quickly to ensure zero latency overhead if external network is slow
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const count = Number(data[0]?.result || 1);
+    const ttlSeconds = Number(data[2]?.result || windowSeconds);
+    const resetAt = Date.now() + Math.max(1, ttlSeconds) * 1000;
+
+    const allowed = count <= maxRequests;
+    const remaining = Math.max(0, maxRequests - count);
+
+    return { allowed, remaining, resetAt };
+  } catch (err) {
+    // Fail gracefully to in-memory limiter without interrupting request handling
+    return null;
+  }
+}
+
+/**
+ * High-performance Rate Limiter.
+ * Uses Upstash REST API in multi-instance serverless deployments (Vercel) when configured,
+ * and seamlessly falls back to fast in-memory rate limiting in local dev / single instance environments.
+ */
 export async function rateLimit(
   key: string,
   maxRequests = 10,
   windowMs = 60000
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  // 1. Try distributed Upstash Redis if configured
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    const upstashResult = await upstashRateLimit(key, maxRequests, windowMs);
+    if (upstashResult) {
+      return upstashResult;
+    }
+  }
+
+  // 2. Fallback to in-memory sliding window limiter
   const now = Date.now();
   const record = memoryRateLimitStore.get(key);
 
@@ -102,3 +166,4 @@ export async function rateLimit(
   record.count += 1;
   return { allowed: true, remaining: maxRequests - record.count, resetAt: record.resetAt };
 }
+
