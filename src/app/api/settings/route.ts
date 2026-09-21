@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTenant, TenantContext } from "@/lib/auth";
-import { OrganizationModel, ApiCredentialModel, UserModel } from "@/lib/db/models";
+import { OrganizationModel, ApiCredentialModel, UserModel, MembershipModel } from "@/lib/db/models";
 import { connectToDatabase } from "@/lib/db/connect";
 import { getSmsProviderForOrg } from "@/lib/providers";
 import { sanitizeUrl } from "@/lib/security";
@@ -42,7 +42,13 @@ export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
 
     const org = await OrganizationModel.findById(orgObjId).lean();
     const providerCred = await ApiCredentialModel.findOne({ organizationId: orgObjId, isDefault: true }).lean();
-    const teamMembers = await UserModel.find({ defaultOrganizationId: orgObjId }).select("-passwordHash").lean();
+    const memberships = await MembershipModel.find({ organizationId: orgObjId }).lean();
+    const memberUserIds = memberships.map((m) => m.userId);
+    const teamMembers = await UserModel.find({
+      $or: [{ defaultOrganizationId: orgObjId }, { _id: { $in: memberUserIds } }],
+    })
+      .select("-passwordHash")
+      .lean();
 
     // Check balance only if tenant configured their OWN custom BYOK API key (never leak central gateway balance)
     let balance: number | null = null;

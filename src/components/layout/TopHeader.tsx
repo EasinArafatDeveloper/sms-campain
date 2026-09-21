@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Bell, Calendar, ChevronDown, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 
@@ -8,6 +8,38 @@ import { ThemeToggle } from "../theme/ThemeToggle";
 
 export function TopHeader() {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentUser(data.user);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadUser();
+  }, []);
+
+  const userInitials = currentUser?.name
+    ? currentUser.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "U";
+
+  const userRoleDisplay =
+    currentUser?.platformRole === "superadmin"
+      ? "SuperAdmin"
+      : currentUser?.role === "owner"
+      ? "Workspace Owner"
+      : "Admin";
 
   return (
     <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs backdrop-blur-md">
@@ -72,12 +104,16 @@ export function TopHeader() {
 
         {/* User Badge */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-            OS
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            {userInitials}
           </div>
           <div className="hidden lg:block text-left">
-            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none">Omer Sharif</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Marketing Manager</div>
+            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none truncate max-w-[130px]">
+              {currentUser?.name || "Loading..."}
+            </div>
+            <div className="text-[10px] text-slate-500 mt-0.5 capitalize">
+              {userRoleDisplay}
+            </div>
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   DeliveryEventModel,
   AuditLogModel,
   OrganizationModel,
+  ApiCredentialModel,
 } from "@/lib/db/models";
 import { getSmsProviderForOrg } from "../providers";
 import { DeliveryStatus, PaginatedResult } from "@/types";
@@ -153,23 +154,40 @@ export class DeliveryService {
 
   static async getApiHealth(organizationId: string): Promise<ApiHealthMetrics> {
     await connectToDatabase();
+    const orgObjId = new mongoose.Types.ObjectId(organizationId);
+
+    const [providerCred, org] = await Promise.all([
+      ApiCredentialModel.findOne({ organizationId: orgObjId, isDefault: true, apiKey: { $exists: true, $ne: "" } }).lean(),
+      OrganizationModel.findById(orgObjId).select("smsCredits").lean(),
+    ]);
+
     const provider = await getSmsProviderForOrg(organizationId);
     const health = await provider.healthCheck();
-    const balanceRes = await provider.getBalance();
+
+    let balance: number | undefined = undefined;
+    if (providerCred?.apiKey && providerCred.apiKey.trim().length > 0) {
+      try {
+        const balanceRes = await provider.getBalance();
+        balance = balanceRes.balance;
+      } catch (e) {
+        console.warn("[getApiHealth] Failed to fetch BYOK balance:", e);
+      }
+    }
+
     const pendingRetries = await DeliveryJobModel.countDocuments({
-      organizationId: new mongoose.Types.ObjectId(organizationId),
+      organizationId: orgObjId,
       status: { $in: ["retrying", "pending_retry"] },
     });
 
     return {
-      provider: provider.name.toUpperCase(),
+      provider: providerCred?.apiKey ? "ZENDSMS (BYOK)" : "SMSPRO SHARED GATEWAY",
       status: health.healthy ? "operational" : "degraded",
       averageResponseMs: health.responseTimeMs || 42,
       successRate: 99.4,
       requestsPerMinute: 340,
       retries: pendingRetries,
-      balance: balanceRes.balance,
-      currency: balanceRes.currency || "BDT",
+      balance,
+      currency: "BDT",
     };
   }
 

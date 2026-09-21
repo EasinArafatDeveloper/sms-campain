@@ -42,6 +42,8 @@ export default function SettingsPage() {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
 
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -68,6 +70,9 @@ export default function SettingsPage() {
         }
         if (typeof data.balance !== "undefined") {
           setBalance(data.balance);
+        }
+        if (Array.isArray(data.teamMembers)) {
+          setTeamMembers(data.teamMembers);
         }
       } catch (err) {
         console.error(err);
@@ -201,12 +206,29 @@ export default function SettingsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 text-xs">
-                {/* Account Balance Alert */}
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 flex items-center justify-between">
+                {/* Account Balance / Credits Display */}
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 rounded-xl border border-blue-100 dark:border-slate-800 flex items-center justify-between">
                   <div>
-                    <span className="text-slate-500 text-[11px] font-semibold uppercase">ZendSMS Credit Balance</span>
-                    <div className="text-2xl font-bold text-slate-900 mt-0.5">
-                      ৳{formatNumber(balance)} <span className="text-xs font-semibold text-blue-700">BDT</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                      {balance !== null ? "Custom ZendSMS API Balance" : "Workspace SMS Credits"}
+                    </span>
+                    <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
+                      {balance !== null ? (
+                        <>
+                          <span>৳{formatNumber(balance)}</span>
+                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">BDT</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{formatNumber(smsCredits)}</span>
+                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">Credits Available</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      {balance !== null
+                        ? "Connected via custom ZendSMS API credentials."
+                        : "Managed via SMSPro Central Gateway (1 Credit = 1 SMS)."}
                     </div>
                   </div>
                   <Button
@@ -216,9 +238,10 @@ export default function SettingsPage() {
                     onClick={async () => {
                       setIsCheckingBalance(true);
                       try {
-                        const res = await fetch("/api/delivery-queue/health");
+                        const res = await fetch("/api/settings");
                         const json = await res.json();
                         if (typeof json.balance !== "undefined") setBalance(json.balance);
+                        if (typeof json.smsCredits !== "undefined") setSmsCredits(json.smsCredits);
                       } finally {
                         setIsCheckingBalance(false);
                       }
@@ -227,38 +250,45 @@ export default function SettingsPage() {
                     className="gap-1.5 text-xs"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    <span>Check Live Balance</span>
+                    <span>Refresh Balance</span>
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">API Key (Bearer Token)</label>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Custom API Key (BYOK - Optional)
+                    </label>
                     <input
                       type="text"
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="sk_ago... (Leave empty to use shared gateway)"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Leave empty to use SMSPro Central Gateway with your workspace credits.
+                    </span>
                   </div>
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Approved Sender ID (CLI)</label>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Approved Sender ID (CLI)</label>
                     <input
                       type="text"
                       value={senderId}
                       onChange={(e) => setSenderId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="8809612781020"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Send SMS API Endpoint</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Send SMS API Endpoint</label>
                   <input
                     type="url"
                     value={apiUrl}
                     onChange={(e) => setApiUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-slate-600"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400"
                   />
                 </div>
               </CardContent>
@@ -396,45 +426,46 @@ export default function SettingsPage() {
             <CardHeader>
               <div>
                 <CardTitle>Team Members & Permissions (RBAC)</CardTitle>
-                <CardDescription>Manage user roles across Owner, Admin, Manager, Analyst, and Viewer</CardDescription>
+                <CardDescription>Workspace user roles: Owner (Full Access) and Admin</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
-                + Invite Member
-              </Button>
             </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-3.5">Name</th>
                     <th className="px-4 py-3.5">Email</th>
+                    <th className="px-4 py-3.5">Phone</th>
                     <th className="px-4 py-3.5">Role</th>
                     <th className="px-4 py-3.5">Status</th>
-                    <th className="px-6 py-3.5 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {[
-                    { name: "Omer Sharif", email: "omer@smspro.io", role: "Owner", status: "active" },
-                    { name: "Sarah Jenkins", email: "sarah@smspro.io", role: "Manager", status: "active" },
-                    { name: "Technical Operations", email: "dev@smspro.io", role: "Admin", status: "active" },
-                  ].map((m, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80">
-                      <td className="px-6 py-4 font-semibold text-slate-900">{m.name}</td>
-                      <td className="px-4 py-4 text-slate-600">{m.email}</td>
-                      <td className="px-4 py-4">
-                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">
-                          {m.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Badge variant="success">Active</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right text-blue-600 font-semibold cursor-pointer hover:underline">
-                        Edit
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                  {teamMembers && teamMembers.length > 0 ? (
+                    teamMembers.map((m, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/60">
+                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{m.name}</td>
+                        <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{m.email}</td>
+                        <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{m.phone || "—"}</td>
+                        <td className="px-4 py-4">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-semibold uppercase text-[10px]">
+                            {m.role || "Owner"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <Badge variant="success" className="capitalize">
+                            {m.status || "active"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
+                        Loading workspace team members...
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
