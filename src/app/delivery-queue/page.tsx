@@ -253,35 +253,32 @@ export default function DeliveryQueuePage() {
                     </tr>
                   ) : (
                     jobs.map((job: any, index: number) => {
-                    const queueId = job._id ? `Q-${String(job._id).slice(-5)}` : `Q-8921${index}`;
+                    const queueId = job._id ? `Q-${String(job._id).slice(-6).toUpperCase()}` : "—";
                     return (
                       <tr key={job._id || index} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-5 py-3.5 font-bold text-slate-900">{queueId}</td>
                         <td className="px-4 py-3.5 text-slate-600">{job.phone}</td>
-                        <td className="px-4 py-3.5">
-                          <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-bold border border-purple-100">
-                            {job.trackingId}
-                          </span>
+                        <td className="px-4 py-3.5 font-bold text-blue-600">
+                          {job.trackingId || "—"}
                         </td>
-                        <td className="px-4 py-3.5 font-sans">
+                        <td className="px-4 py-3.5">
                           <StatusBadge status={job.status} />
                         </td>
-                        <td className="px-4 py-3.5 text-slate-500">{job.attempts || 1}/3</td>
-                        <td className="px-4 py-3.5 font-sans text-slate-400 text-[11px]">
-                          {formatDateTime(job.createdAt)}
+                        <td className="px-4 py-3.5 text-slate-500">
+                          {job.attempts || 1} / 3
                         </td>
-                        <td className="px-5 py-3.5 text-right font-sans">
-                          {job.clickStatus === "clicked" ? (
-                            <Badge variant="purple" className="font-semibold">
-                              Clicked
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-400 text-[11px]">Not clicked</span>
-                          )}
+                        <td className="px-4 py-3.5 text-slate-400 text-[11px]">
+                          {job.createdAt ? formatDateTime(job.createdAt) : "—"}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <Badge variant={job.clickStatus === "clicked" ? "success" : "default"} className="text-[10px]">
+                            {job.clickStatus === "clicked" ? "Clicked" : "Unopened"}
+                          </Badge>
                         </td>
                       </tr>
                     );
-                  }))}
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -317,9 +314,13 @@ export default function DeliveryQueuePage() {
                   <span className="font-semibold text-slate-900">{health.requestsPerMinute} req/min</span>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">Account Balance</span>
+                  <span className="text-slate-500">
+                    {typeof health.balance !== "undefined" ? "API Balance" : "Gateway Status"}
+                  </span>
                   <strong className="text-slate-900 text-sm font-bold">
-                    {formatNumber(health.balance)} {health.currency || "BDT"}
+                    {typeof health.balance !== "undefined"
+                      ? `${formatNumber(health.balance)} ${health.currency || "BDT"}`
+                      : "Connected (Shared)"}
                   </strong>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">

@@ -84,19 +84,13 @@ export function TopHeader() {
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-dropdown border border-slate-200 dark:border-slate-800 p-4 z-50 text-xs">
               <div className="font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center justify-between">
-                <span>Recent Notifications</span>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 cursor-pointer">Mark all as read</span>
+                <span>Notifications</span>
+                <span className="text-[10px] text-slate-400">All caught up</span>
               </div>
-              <div className="space-y-2.5">
-                <div className="p-2.5 bg-blue-50/60 dark:bg-blue-950/40 rounded-lg border border-blue-100 dark:border-blue-900/50">
-                  <div className="font-medium text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>SMS Gateway Connected</span>
-                  </div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
-                    ZendSMS gateway is active and ready to broadcast campaigns.
-                  </div>
-                </div>
+              <div className="py-6 text-center text-slate-400">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5 opacity-80" />
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-300">No unread notifications</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Campaign dispatches and delivery events will alert here.</div>
               </div>
             </div>
           )}

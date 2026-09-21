@@ -179,7 +179,7 @@ export default function LandingPage() {
               <Link href="/login" className="w-full sm:w-auto">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto px-6 py-3.5 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-semibold gap-2.5 shadow-sm">
                   <Play className="w-4 h-4 text-blue-600 dark:text-blue-400 fill-blue-600/20" />
-                  <span>Explore Live Demo (1-Click)</span>
+                  <span>Sign In to Workspace</span>
                 </Button>
               </Link>
             </div>
@@ -812,7 +812,7 @@ export default function LandingPage() {
               </Link>
               <Link href="/login" className="w-full sm:w-auto">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto px-6 py-3.5 border-white/40 bg-white/10 hover:bg-white/20 text-white text-sm font-bold backdrop-blur-sm">
-                  <span>Explore Demo Account</span>
+                  <span>Sign In to Account</span>
                 </Button>
               </Link>
             </div>
