@@ -113,15 +113,15 @@ export class ExportService {
       .populate("recipientId", "customId")
       .lean();
 
-    const formatted = leads.map((l: any, i: number) => ({
-      "User ID": l.recipientId?.customId || `USR-${1000 + i}`,
+    const formatted = leads.map((l: any) => ({
+      "User ID": l.recipientId?.customId || l.phone || `LEAD-${String(l._id).slice(-6)}`,
       "Phone": l.phone,
-      "Name": l.recipientName || "Customer",
-      "Campaigns Clicked": l.campaignsClicked || 3,
-      "Total Clicks": l.totalClicks || 5,
+      "Name": l.recipientName || "—",
+      "Campaigns Clicked": l.campaignsClicked || 0,
+      "Total Clicks": l.totalClicks || 0,
       "Last Click": l.lastClickAt ? new Date(l.lastClickAt).toISOString() : "",
-      "Engagement Score": l.engagementScore || 85,
-      "Lead Status": l.leadStatus || "highly_active",
+      "Engagement Score": l.engagementScore || 0,
+      "Lead Status": l.leadStatus || "standard",
     }));
 
     return this.generateCsv(formatted);

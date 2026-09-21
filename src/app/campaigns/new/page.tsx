@@ -593,7 +593,7 @@ function CreateCampaignForm() {
                 >
                   <UploadCloud className="w-5 h-5 text-blue-600 mb-2" />
                   <div className="font-semibold text-xs text-slate-900">Upload File</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">CSV, XLSX, TXT spreadsheet</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">CSV, TXT, TSV file</div>
                 </div>
 
                 <div
@@ -648,13 +648,13 @@ function CreateCampaignForm() {
                 </div>
               </div>
 
-              {/* Option 1: CSV / XLSX File Upload */}
+              {/* Option 1: CSV / TXT File Upload */}
               {audienceType === "upload" && (
                 <div className="space-y-3">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv,.txt,.xlsx,.xls,.tsv"
+                    accept=".csv,.txt,.tsv"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
@@ -676,10 +676,10 @@ function CreateCampaignForm() {
                     >
                       <UploadCloud className="w-10 h-10 text-blue-500 mx-auto" />
                       <div className="text-xs font-semibold text-slate-800">
-                        Click to Browse or Drag & Drop your CSV / XLSX contact file
+                        Click to Browse or Drag & Drop your CSV contact file
                       </div>
                       <p className="text-[11px] text-slate-400">
-                        Supported formats: .csv, .txt, .xlsx. Columns: <code>phone</code>, <code>name</code>, <code>custom_id</code>
+                        Supported formats: .csv, .txt, .tsv. Columns: <code>phone</code>, <code>name</code>, <code>custom_id</code>
                       </p>
                       <div className="pt-2 flex items-center justify-center gap-3">
                         <Button

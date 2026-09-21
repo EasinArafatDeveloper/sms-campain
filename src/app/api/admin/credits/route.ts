@@ -9,7 +9,7 @@ export const POST = withTenant(
     try {
       await connectToDatabase();
       const body = await req.json();
-      const { organizationId, amount, action = "add" } = body;
+      const { organizationId, amount, action = "add", reason } = body;
 
       if (!organizationId || typeof amount !== "number") {
         return NextResponse.json({ error: "Valid organizationId and numeric amount required" }, { status: 400 });
@@ -28,6 +28,7 @@ export const POST = withTenant(
         return NextResponse.json({ error: "Organization not found" }, { status: 404 });
       }
 
+      const previousCredits = orgBefore.smsCredits;
       let newCredits = orgBefore.smsCredits;
       if (action === "set") {
         newCredits = Math.max(0, amount);
@@ -51,10 +52,11 @@ export const POST = withTenant(
         resourceId: organizationId,
         metadata: {
           adminEmail: ctx.userEmail,
-          previousCredits: orgBefore.smsCredits,
+          previousCredits,
           newCredits,
           amount,
           action,
+          reason: reason || "Manual Admin Adjustment",
         },
       });
 

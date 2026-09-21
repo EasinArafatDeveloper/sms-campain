@@ -9,7 +9,7 @@ const envSchema = z.object({
   ZENDSMS_API_URL: z.string().optional().default("https://api.zendsms.com/api/v1/send-sms"),
   ZENDSMS_BALANCE_URL: z.string().optional().default("https://api.zendsms.com/api/v1/balance"),
   WEBHOOK_SECRET: z.string().optional(),
-  TRACKING_BASE_URL: z.string().optional().default("https://postman.asia"),
+  TRACKING_BASE_URL: z.string().optional().default("https://sms-campain.vercel.app"),
 });
 
 export const env = envSchema.parse({

@@ -174,7 +174,7 @@ export class TrackingService {
    * Fully sanitizes URLs and prevents stored XSS when embedding variables in HTML/JS.
    */
   static generateTrampolineHtml(destinationUrl: string, trackingId: string, verifyToken: string): string {
-    const validUrl = sanitizeUrl(destinationUrl) || "https://postman.asia";
+    const validUrl = sanitizeUrl(destinationUrl) || "/";
     // Sanitize for HTML attribute
     const safeHtmlDest = validUrl
       .replace(/&/g, "&amp;")

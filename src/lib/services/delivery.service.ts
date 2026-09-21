@@ -174,17 +174,28 @@ export class DeliveryService {
       }
     }
 
-    const pendingRetries = await DeliveryJobModel.countDocuments({
-      organizationId: orgObjId,
-      status: { $in: ["retrying", "pending_retry"] },
-    });
+    const [pendingRetries, deliveredCount, failedCount, sentCount] = await Promise.all([
+      DeliveryJobModel.countDocuments({
+        organizationId: orgObjId,
+        status: { $in: ["retrying", "pending_retry"] },
+      }),
+      DeliveryJobModel.countDocuments({ organizationId: orgObjId, status: "delivered" }),
+      DeliveryJobModel.countDocuments({ organizationId: orgObjId, status: "failed" }),
+      DeliveryJobModel.countDocuments({ organizationId: orgObjId, status: "sent" }),
+    ]);
+
+    const totalFinished = deliveredCount + sentCount + failedCount;
+    const successRate =
+      totalFinished > 0
+        ? Number((((deliveredCount + sentCount) / totalFinished) * 100).toFixed(1))
+        : 100;
 
     return {
       provider: providerCred?.apiKey ? "ZENDSMS (BYOK)" : "SMSPRO SHARED GATEWAY",
       status: health.healthy ? "operational" : "degraded",
-      averageResponseMs: health.responseTimeMs || 42,
-      successRate: 99.4,
-      requestsPerMinute: 340,
+      averageResponseMs: health.responseTimeMs || 0,
+      successRate,
+      requestsPerMinute: 0,
       retries: pendingRetries,
       balance,
       currency: "BDT",

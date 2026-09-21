@@ -68,21 +68,22 @@ async function resetClean() {
     },
   });
 
-  const passwordHash = await bcrypt.hash("password123", 10);
+  const passwordHash = await bcrypt.hash("Admin@SMSPro2026!", 10);
 
-  const owner = await UserModel.create({
-    _id: new mongoose.Types.ObjectId("670000000000000000000002"),
-    name: "Omer Sharif",
-    email: "omer@smspro.io",
+  const admin = await UserModel.create({
+    name: "SMSPro Admin",
+    email: "admin@smspro.io",
     passwordHash,
     role: "owner",
+    platformRole: "superadmin",
     status: "active",
+    isPhoneVerified: true,
     defaultOrganizationId: org._id,
   });
 
   await MembershipModel.create({
     organizationId: org._id,
-    userId: owner._id,
+    userId: admin._id,
     role: "owner",
     permissions: ["*"],
   });

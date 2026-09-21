@@ -67,19 +67,21 @@ async function seed() {
     },
   });
 
-  const passwordHash = await bcrypt.hash("password123", 10);
-  const owner = await UserModel.create({
-    _id: new mongoose.Types.ObjectId("670000000000000000000002"),
-    name: "Omer Sharif",
-    email: "omer@smspro.io",
+  const passwordHash = await bcrypt.hash("Admin@SMSPro2026!", 10);
+  const admin = await UserModel.create({
+    name: "SMSPro SuperAdmin",
+    email: "admin@smspro.io",
     passwordHash,
     role: "owner",
+    platformRole: "superadmin",
+    isPhoneVerified: true,
     defaultOrganizationId: org._id,
   });
+  const owner = admin;
 
   await MembershipModel.create({
     organizationId: org._id,
-    userId: owner._id,
+    userId: admin._id,
     role: "owner",
     permissions: ["*"],
   });

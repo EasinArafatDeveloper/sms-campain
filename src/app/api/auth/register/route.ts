@@ -50,9 +50,9 @@ export async function POST(req: NextRequest) {
       slug,
       plan: "growth",
       smsCredits: 0,
-      senderIds: ["8809612781020", "SMSPRO", "MYBRAND"],
+      senderIds: ["8809612781020"],
       defaultSenderId: "8809612781020",
-      trackingDomain: "https://postman.asia",
+      trackingDomain: "https://sms-campain.vercel.app",
     });
 
     const user = await UserModel.create({

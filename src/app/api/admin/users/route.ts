@@ -95,54 +95,97 @@ export const PATCH = withTenant(
     try {
       await connectToDatabase();
       const body = await req.json();
-      const { userId, status, platformRole } = body;
+      const { userId, status, platformRole, workspaceStatus, organizationId } = body;
 
-      if (!userId) {
-        return NextResponse.json({ error: "User ID required" }, { status: 400 });
+      if (!userId && !organizationId) {
+        return NextResponse.json({ error: "User ID or Organization ID required" }, { status: 400 });
       }
 
-      const updateData: any = {};
-      if (status && ["active", "disabled"].includes(status)) {
-        updateData.status = status;
-      }
-      if (platformRole && ["user", "superadmin"].includes(platformRole)) {
-        updateData.platformRole = platformRole;
+      // 1. Self-Protection: Prevent superadmin from revoking or disabling themselves
+      if (userId && userId.toString() === ctx.userId.toString()) {
+        if (status === "disabled") {
+          return NextResponse.json(
+            { error: "Action blocked: You cannot disable your own active SuperAdmin account." },
+            { status: 400 }
+          );
+        }
+        if (platformRole === "user") {
+          return NextResponse.json(
+            { error: "Action blocked: You cannot revoke SuperAdmin privileges from your own account." },
+            { status: 400 }
+          );
+        }
       }
 
-      const user = await UserModel.findByIdAndUpdate(userId, { $set: updateData }, { new: true }).select(
-        "-passwordHash"
-      );
+      let updatedUser: any = null;
+      let updatedOrg: any = null;
 
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
+      if (userId) {
+        const updateData: any = {};
+        if (status && ["active", "disabled"].includes(status)) {
+          updateData.status = status;
+        }
+        if (platformRole && ["user", "superadmin"].includes(platformRole)) {
+          updateData.platformRole = platformRole;
+        }
 
-      // If user disabled, also suspend their default organization
-      if (status && user?.defaultOrganizationId) {
-        await OrganizationModel.findByIdAndUpdate(user.defaultOrganizationId, {
-          status: status === "active" ? "active" : "suspended",
+        updatedUser = await UserModel.findByIdAndUpdate(
+          userId,
+          { $set: updateData },
+          { new: true }
+        ).select("-passwordHash");
+
+        if (!updatedUser) {
+          return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // Log SuperAdmin Action
+        await AuditLogModel.create({
+          organizationId: updatedUser.defaultOrganizationId || new mongoose.Types.ObjectId(ctx.organizationId),
+          userId: new mongoose.Types.ObjectId(ctx.userId),
+          userName: ctx.userName,
+          action: "ADMIN_UPDATE_USER",
+          resourceType: "User",
+          resourceId: userId,
+          metadata: {
+            adminEmail: ctx.userEmail,
+            targetUserEmail: updatedUser.email,
+            updatedFields: updateData,
+          },
         });
       }
 
-      // Log SuperAdmin Action
-      await AuditLogModel.create({
-        organizationId: user.defaultOrganizationId || new mongoose.Types.ObjectId(ctx.organizationId),
-        userId: new mongoose.Types.ObjectId(ctx.userId),
-        userName: ctx.userName,
-        action: "ADMIN_UPDATE_USER",
-        resourceType: "User",
-        resourceId: userId,
-        metadata: {
-          adminEmail: ctx.userEmail,
-          targetUserEmail: user.email,
-          updatedFields: updateData,
-        },
-      });
+      // Allow independent Workspace Status update
+      if (organizationId && workspaceStatus && ["active", "suspended"].includes(workspaceStatus)) {
+        updatedOrg = await OrganizationModel.findByIdAndUpdate(
+          organizationId,
+          { $set: { status: workspaceStatus } },
+          { new: true }
+        );
 
-      return NextResponse.json({ success: true, user });
+        await AuditLogModel.create({
+          organizationId: new mongoose.Types.ObjectId(organizationId),
+          userId: new mongoose.Types.ObjectId(ctx.userId),
+          userName: ctx.userName,
+          action: `ORGANIZATION_${workspaceStatus.toUpperCase()}`,
+          resourceType: "Organization",
+          resourceId: organizationId,
+          metadata: {
+            adminEmail: ctx.userEmail,
+            workspaceStatus,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Updated successfully",
+        user: updatedUser,
+        organization: updatedOrg,
+      });
     } catch (err: any) {
       console.error("[Admin Users Update API] Error:", err);
-      return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+      return NextResponse.json({ error: err.message || "Failed to update user" }, { status: 500 });
     }
   },
   { requireSuperAdmin: true }

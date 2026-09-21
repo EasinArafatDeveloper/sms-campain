@@ -94,12 +94,10 @@ export default function DeliveryQueuePage() {
   const health = data?.health || {
     provider: "ZENDSMS",
     status: "operational",
-    averageResponseMs: 38,
-    successRate: 99.4,
+    averageResponseMs: 0,
+    successRate: 100,
     requestsPerMinute: 0,
     retries: 0,
-    balance: 4704,
-    currency: "BDT",
   };
 
   const jobs = data?.jobs || [];

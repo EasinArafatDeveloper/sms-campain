@@ -28,7 +28,7 @@ export default function SettingsPage() {
   // State
   const [orgName, setOrgName] = useState("My Workspace");
   const [defaultSenderId, setDefaultSenderId] = useState("8809612781020");
-  const [trackingDomain, setTrackingDomain] = useState("https://postman.asia");
+  const [trackingDomain, setTrackingDomain] = useState("https://sms-campain.vercel.app");
   const [trackingLength, setTrackingLength] = useState(6);
   const [smsCredits, setSmsCredits] = useState<number>(20);
 
@@ -58,7 +58,7 @@ export default function SettingsPage() {
         if (data.organization) {
           setOrgName(data.organization.name || "My Workspace");
           setDefaultSenderId(data.organization.defaultSenderId || "8809612781020");
-          setTrackingDomain(data.organization.trackingDomain || "https://postman.asia");
+          setTrackingDomain(data.organization.trackingDomain || "https://sms-campain.vercel.app");
           if (data.organization.settings?.defaultTrackingLength) {
             setTrackingLength(data.organization.settings.defaultTrackingLength);
           }
