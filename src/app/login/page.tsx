@@ -54,7 +54,9 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (res.ok) {
-        router.push(safeCallback());
+        const explicit = new URLSearchParams(window.location.search).get("callbackUrl");
+        // Super admins land on the admin console unless they were sent here from a specific page
+        router.push(explicit ? safeCallback() : data.user?.platformRole === "superadmin" ? "/admin" : "/dashboard");
         router.refresh();
       } else {
         setError(data.error || "Invalid email or password");
