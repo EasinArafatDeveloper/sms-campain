@@ -2,23 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/ui/StatCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
-import {
-  ListOrdered,
-  RotateCw,
-  Zap,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Clock,
-  Play,
-  Server,
-  ShieldCheck,
-} from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState, PageHeader, Panel, SelectBox, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
+import { AlertTriangle, CheckCircle2, ListOrdered, Loader2, Play, RotateCw, Send, Server } from "lucide-react";
 import { formatNumber, formatDateTime } from "@/lib/utils";
 
 export default function DeliveryQueuePage() {
@@ -30,8 +18,7 @@ export default function DeliveryQueuePage() {
   const fetchQueueData = async () => {
     try {
       const res = await fetch(`/api/delivery-queue?status=${statusFilter}`);
-      const json = await res.json();
-      setData(json);
+      setData(await res.json());
     } catch (err) {
       console.error("Failed to load queue data", err);
     } finally {
@@ -41,8 +28,9 @@ export default function DeliveryQueuePage() {
 
   useEffect(() => {
     fetchQueueData();
-    const interval = setInterval(fetchQueueData, 5000); // Polling every 5s
+    const interval = setInterval(fetchQueueData, 5000); // refresh every 5s
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const handleProcessBatch = async () => {
@@ -65,302 +53,146 @@ export default function DeliveryQueuePage() {
     return (
       <AppLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-8 w-64 bg-slate-200 animate-pulse rounded-md" />
-              <div className="h-4 w-96 bg-slate-200 animate-pulse rounded-md" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-24 bg-white border border-slate-200 rounded-xl p-4 animate-pulse" />
+          <Skeleton className="h-9 w-64" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
             ))}
           </div>
-          <div className="h-96 bg-white border border-slate-200 rounded-xl p-6 animate-pulse" />
+          <Skeleton className="h-96 rounded-2xl" />
         </div>
       </AppLayout>
     );
   }
 
-  const stats = data?.stats || {
-    totalQueued: 0,
-    processing: 0,
-    sent: 0,
-    delivered: 0,
-    failed: 0,
-    pendingRetry: 0,
-  };
-
-  const health = data?.health || {
-    provider: "ZENDSMS",
-    status: "operational",
-    averageResponseMs: 0,
-    successRate: 100,
-    requestsPerMinute: 0,
-    retries: 0,
-  };
-
-  const jobs = data?.jobs || [];
+  const stats = data?.stats || { totalQueued: 0, processing: 0, sent: 0, delivered: 0, failed: 0, pendingRetry: 0 };
+  const health = data?.health || { provider: "ZENDSMS", status: "operational", successRate: 100, retries: 0 };
+  const jobs: any[] = data?.jobs || [];
+  const waiting = stats.totalQueued + stats.processing;
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Delivery Queue & Dispatcher</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Real-time SMS queue monitoring, exponential backoff retries, and ZendSMS gateway status.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="md" onClick={fetchQueueData} className="gap-1.5">
-              <RotateCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleProcessBatch}
-              isLoading={isProcessing}
-              disabled={stats.totalQueued === 0}
-              className="gap-1.5 shadow-sm"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>
-                {stats.totalQueued > 0 ? `Dispatch Queue (${stats.totalQueued} SMS)` : "Dispatch Queue (0 SMS)"}
-              </span>
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Delivery queue"
+          subtitle="Messages waiting to go out and how each one turned out. Updates every few seconds."
+          actions={
+            <>
+              <button type="button" onClick={fetchQueueData} className={btnSecondary}>
+                <RotateCw className="h-4 w-4" aria-hidden="true" />
+                Refresh
+              </button>
+              <button type="button" onClick={handleProcessBatch} disabled={isProcessing || stats.totalQueued === 0} className={btnPrimary}>
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+                {stats.totalQueued > 0 ? `Send ${formatNumber(stats.totalQueued)} waiting` : "Nothing waiting"}
+              </button>
+            </>
+          }
+        />
 
-        {/* 6 KPI Status Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard
-            title="Total Queued"
-            value={stats.totalQueued}
-            icon={ListOrdered}
-            iconColor="text-blue-600"
-            iconBg="bg-blue-50"
-          />
-          <StatCard
-            title="Processing"
-            value={stats.processing}
-            icon={RotateCw}
-            iconColor="text-amber-600"
-            iconBg="bg-amber-50"
-          />
-          <StatCard
-            title="Sent"
-            value={stats.sent}
-            icon={Zap}
-            iconColor="text-indigo-600"
-            iconBg="bg-indigo-50"
-          />
-          <StatCard
-            title="Delivered"
-            value={stats.delivered}
-            icon={CheckCircle2}
-            iconColor="text-emerald-600"
-            iconBg="bg-emerald-50"
-          />
-          <StatCard
-            title="Failed"
-            value={stats.failed}
-            icon={XCircle}
-            iconColor="text-rose-600"
-            iconBg="bg-rose-50"
-          />
-          <StatCard
-            title="Pending Retry"
-            value={stats.pendingRetry}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard label="Waiting" value={waiting} tone="blue" icon={ListOrdered} sub={waiting > 0 ? `${formatNumber(stats.processing)} being sent right now` : "Queue is empty"} />
+          <KpiCard label="Sent" value={stats.sent} tone="indigo" icon={Send} sub="Handed to the gateway" />
+          <KpiCard label="Delivered" value={stats.delivered} tone="emerald" icon={CheckCircle2} sub="Confirmed by the carrier" />
+          <KpiCard
+            label="Needs attention"
+            value={stats.failed + stats.pendingRetry}
+            tone={stats.failed > 0 ? "rose" : stats.pendingRetry > 0 ? "amber" : "emerald"}
             icon={AlertTriangle}
-            iconColor="text-amber-600"
-            iconBg="bg-amber-50"
+            sub={`${formatNumber(stats.failed)} failed · ${formatNumber(stats.pendingRetry)} retrying`}
           />
         </div>
 
-        {/* Pipeline Stage Banner */}
-        <Card className="p-4 bg-slate-900 text-white border-0 shadow-md">
-          <div className="flex items-center justify-between flex-wrap gap-4 text-xs font-semibold">
-            <div className="flex items-center gap-2 text-blue-400">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span>1. Link Generated</span>
-            </div>
-            <span className="text-slate-600 font-bold">→</span>
-            <div className="flex items-center gap-2 text-amber-400">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span>2. Queued in Redis/DB</span>
-            </div>
-            <span className="text-slate-600 font-bold">→</span>
-            <div className="flex items-center gap-2 text-indigo-400">
-              <span className="w-2 h-2 rounded-full bg-indigo-400" />
-              <span>3. API Processing</span>
-            </div>
-            <span className="text-slate-600 font-bold">→</span>
-            <div className="flex items-center gap-2 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>4. Delivered & Tracked</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Main Grid: Queue Table + API Health Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Delivery Queue Table */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div>
-                <CardTitle>Delivery Queue Activity</CardTitle>
-                <CardDescription>Live telemetry stream of outbound SMS jobs</CardDescription>
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-white font-medium text-slate-700"
-              >
-                <option value="all">All Jobs</option>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Panel
+            flush
+            className="lg:col-span-2"
+            title="Recent messages"
+            description="Latest outbound SMS jobs"
+            actions={
+              <SelectBox value={statusFilter} onChange={setStatusFilter} label="Filter by status">
+                <option value="all">All</option>
                 <option value="queued">Queued</option>
-                <option value="processing">Processing</option>
+                <option value="processing">Sending</option>
                 <option value="sent">Sent</option>
                 <option value="delivered">Delivered</option>
-                <option value="pending_retry">Pending Retry</option>
+                <option value="pending_retry">Retrying</option>
                 <option value="failed">Failed</option>
-              </select>
-            </CardHeader>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                  <tr>
-                    <th className="px-5 py-3">Queue ID</th>
-                    <th className="px-4 py-3">Recipient</th>
-                    <th className="px-4 py-3">Tracking ID</th>
-                    <th className="px-4 py-3">Delivery Status</th>
-                    <th className="px-4 py-3">Attempt</th>
-                    <th className="px-4 py-3">Time</th>
-                    <th className="px-5 py-3 text-right">Click Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
-                  {jobs.length === 0 ? (
+              </SelectBox>
+            }
+          >
+            {jobs.length === 0 ? (
+              <EmptyState icon={ListOrdered} title="Nothing here yet" body="Messages from your campaigns show up here as soon as they are queued." />
+            ) : (
+              <div className={tbl.wrap}>
+                <table className={tbl.table}>
+                  <thead className={tbl.head}>
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-slate-400 font-sans">
-                        No outbound messages in delivery queue. Newly launched campaigns will appear here in real-time.
-                      </td>
+                      <th className={tbl.th}>Recipient</th>
+                      <th className={tbl.th}>Status</th>
+                      <th className={`${tbl.th} hidden sm:table-cell`}>Attempt</th>
+                      <th className={`${tbl.th} hidden md:table-cell`}>Time</th>
+                      <th className={`${tbl.th} text-right`}>Clicked</th>
                     </tr>
-                  ) : (
-                    jobs.map((job: any, index: number) => {
-                    const queueId = job._id ? `Q-${String(job._id).slice(-6).toUpperCase()}` : "—";
-                    return (
-                      <tr key={job._id || index} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-5 py-3.5 font-bold text-slate-900">{queueId}</td>
-                        <td className="px-4 py-3.5 text-slate-600">{job.phone}</td>
-                        <td className="px-4 py-3.5 font-bold text-blue-600">
-                          {job.trackingId || "—"}
+                  </thead>
+                  <tbody className={tbl.body}>
+                    {jobs.map((job: any, index: number) => (
+                      <tr key={job._id || index} className={tbl.row}>
+                        <td className={tbl.td}>
+                          <span className={`block ${tbl.mono}`}>{job.phone}</span>
+                          {job.trackingId && <span className="text-xs text-slate-400">ID {job.trackingId}</span>}
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className={tbl.td}>
                           <StatusBadge status={job.status} />
                         </td>
-                        <td className="px-4 py-3.5 text-slate-500">
-                          {job.attempts || 1} / 3
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-400 text-[11px]">
-                          {job.createdAt ? formatDateTime(job.createdAt) : "—"}
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <Badge variant={job.clickStatus === "clicked" ? "success" : "default"} className="text-[10px]">
-                            {job.clickStatus === "clicked" ? "Clicked" : "Unopened"}
-                          </Badge>
+                        <td className={`${tbl.td} hidden text-slate-500 sm:table-cell`}>{job.attempts || 1} of 3</td>
+                        <td className={`${tbl.td} hidden text-xs text-slate-400 md:table-cell`}>{job.createdAt ? formatDateTime(job.createdAt) : "—"}</td>
+                        <td className={`${tbl.td} text-right`}>
+                          {job.clickStatus === "clicked" ? <Badge variant="success">Clicked</Badge> : <span className="text-xs text-slate-400">Not yet</span>}
                         </td>
                       </tr>
-                    );
-                  })
-                )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
 
-          {/* API Health & Live Feed Panel */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Server className="w-4 h-4 text-blue-600" />
-                  <CardTitle className="text-sm">SMS Gateway Health</CardTitle>
+          <Panel title="SMS gateway" description="The service that sends your messages">
+            <dl className="space-y-3.5 text-sm">
+              <div className="flex items-center justify-between">
+                <dt className="text-slate-500 dark:text-slate-400">Status</dt>
+                <dd>
+                  <Badge variant={health.status === "operational" ? "success" : "warning"}>{String(health.status).toUpperCase()}</Badge>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 dark:border-white/10">
+                <dt className="text-slate-500 dark:text-slate-400">Provider</dt>
+                <dd className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                  <Server className="h-4 w-4 text-indigo-500" aria-hidden="true" />
+                  {health.provider}
+                </dd>
+              </div>
+              {typeof health.balance !== "undefined" && (
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 dark:border-white/10">
+                  <dt className="text-slate-500 dark:text-slate-400">Gateway balance</dt>
+                  <dd className="font-semibold text-slate-900 dark:text-white">
+                    {formatNumber(health.balance)} {health.currency || "BDT"}
+                  </dd>
                 </div>
-                <Badge variant="success" className="text-[10px]">
-                  {health.status.toUpperCase()}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-3.5 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">Provider</span>
-                  <strong className="text-slate-900">{health.provider} (Bangladesh)</strong>
+              )}
+              {health.averageResponseMs > 0 && (
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 dark:border-white/10">
+                  <dt className="text-slate-500 dark:text-slate-400">Response time</dt>
+                  <dd className="font-semibold text-emerald-600 dark:text-emerald-400">{health.averageResponseMs} ms</dd>
                 </div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">Average Response</span>
-                  <span className="font-semibold text-emerald-600">{health.averageResponseMs} ms</span>
-                </div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">Success Rate</span>
-                  <span className="font-semibold text-blue-600">{health.successRate}%</span>
-                </div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">Throughput</span>
-                  <span className="font-semibold text-slate-900">{health.requestsPerMinute} req/min</span>
-                </div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500">
-                    {typeof health.balance !== "undefined" ? "API Balance" : "Gateway Status"}
-                  </span>
-                  <strong className="text-slate-900 text-sm font-bold">
-                    {typeof health.balance !== "undefined"
-                      ? `${formatNumber(health.balance)} ${health.currency || "BDT"}`
-                      : "Connected (Shared)"}
-                  </strong>
-                </div>
-                <div className="flex items-center justify-between text-slate-500">
-                  <span>Automatic Retries</span>
-                  <span className="font-semibold text-amber-600">{health.retries} pending</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Live Activity Feed */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-purple-600" />
-                  <CardTitle className="text-sm">Live Activity Feed</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2.5 text-xs">
-                {jobs.length === 0 ? (
-                  <div className="p-4 text-center text-slate-400 text-[11px]">
-                    No queue activity. Newly launched campaigns will appear here.
-                  </div>
-                ) : (
-                  jobs.slice(0, 4).map((job: any, i: number) => (
-                    <div
-                      key={job._id || i}
-                      className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-700 space-y-1"
-                    >
-                      <div className="flex items-center justify-between font-semibold text-slate-900">
-                        <span className="font-mono">{job.phone}</span>
-                        <StatusBadge status={job.status} />
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>Tracking: {job.trackingId}</span>
-                        <span>{formatDateTime(job.createdAt)}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              )}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 dark:border-white/10">
+                <dt className="text-slate-500 dark:text-slate-400">Retrying</dt>
+                <dd className="font-semibold text-amber-600 dark:text-amber-400">{formatNumber(health.retries || 0)} messages</dd>
+              </div>
+            </dl>
+          </Panel>
         </div>
       </div>
     </AppLayout>

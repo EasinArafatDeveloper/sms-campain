@@ -1,24 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import {
-  Target,
-  PlusCircle,
-  Sparkles,
-  Download,
-  Send,
-  Trash2,
-  CheckCircle2,
-  Layers,
-  ArrowRight,
-} from "lucide-react";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
-import { formatNumber, formatDate } from "@/lib/utils";
+import { EmptyState, PageHeader, Panel, btnPrimary, btnSecondary } from "@/components/ui/page";
+import { TextField } from "@/components/auth/fields";
+import { Download, Loader2, PlusCircle, Send, Target, X } from "lucide-react";
+import { formatNumber } from "@/lib/utils";
 
 export default function AudienceSegmentsPage() {
   const [segments, setSegments] = useState<any[]>([]);
@@ -30,12 +20,12 @@ export default function AudienceSegmentsPage() {
   const [minClicks, setMinClicks] = useState(2);
   const [withinDays, setWithinDays] = useState(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   const fetchSegments = async () => {
     try {
       const res = await fetch("/api/audiences");
-      const json = await res.json();
-      setSegments(json);
+      setSegments(await res.json());
     } catch (err) {
       console.error(err);
     } finally {
@@ -46,6 +36,14 @@ export default function AudienceSegmentsPage() {
   useEffect(() => {
     fetchSegments();
   }, []);
+
+  useEffect(() => {
+    if (!showCreateModal) return;
+    nameRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setShowCreateModal(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showCreateModal]);
 
   if (isLoading) {
     return (
@@ -66,7 +64,7 @@ export default function AudienceSegmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newSegmentName,
-          description: newSegmentDesc || `Campaigns >= ${minCampaigns}, Clicks >= ${minClicks}, Days <= ${withinDays}`,
+          description: newSegmentDesc || `Clicked in ${minCampaigns}+ campaigns, ${minClicks}+ clicks, in the last ${withinDays} days`,
           rules: [
             { field: "campaignsClicked", operator: "gte", value: minCampaigns },
             { field: "totalClicks", operator: "gte", value: minClicks },
@@ -88,173 +86,112 @@ export default function AudienceSegmentsPage() {
     }
   };
 
-  const listToRender = segments;
+  const NewButton = (
+    <button type="button" onClick={() => setShowCreateModal(true)} className={btnPrimary}>
+      <PlusCircle className="h-4 w-4" aria-hidden="true" />
+      New audience
+    </button>
+  );
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Audience Segments & Rules</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Create composable behavioral segments based on historical click and delivery signals.
-            </p>
-          </div>
-          <Button onClick={() => setShowCreateModal(true)} variant="primary" size="md" className="gap-2">
-            <PlusCircle className="w-4 h-4" />
-            <span>Create Audience Segment</span>
-          </Button>
-        </div>
+        <PageHeader
+          title="Audiences"
+          subtitle="Groups of people picked by how they clicked. Send them a follow-up in one click."
+          actions={segments.length > 0 ? NewButton : undefined}
+        />
 
-        {/* Segments Grid */}
-        {listToRender.length === 0 ? (
-          <Card className="p-12 text-center space-y-3">
-            <Target className="w-10 h-10 text-slate-300 mx-auto" />
-            <div className="text-sm font-semibold text-slate-700">No Audience Segments Found</div>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Create custom behavioral segments by defining rules such as minimum campaigns clicked, total click counts, and recency windows.
-            </p>
-            <Button onClick={() => setShowCreateModal(true)} variant="primary" size="sm" className="mt-2 gap-1.5">
-              <PlusCircle className="w-4 h-4" />
-              <span>Create First Segment</span>
-            </Button>
-          </Card>
+        {segments.length === 0 ? (
+          <Panel>
+            <EmptyState
+              icon={Target}
+              title="No audiences yet"
+              body="Make a group such as “clicked in 3 campaigns in the last 30 days”, then send that group a new campaign."
+              action={NewButton}
+            />
+          </Panel>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {listToRender.map((seg) => (
-              <Card key={seg._id} className="flex flex-col justify-between hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-purple-600" />
-                      <CardTitle className="text-sm">{seg.name}</CardTitle>
-                    </div>
-                    {seg.isSystem && (
-                      <Badge variant="purple" className="text-[10px]">
-                        Smart Rule
-                      </Badge>
-                    )}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {segments.map((seg) => (
+              <div key={seg._id} className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-slate-900">
+                <div className="flex-1 p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow-lg shadow-purple-500/25">
+                      <Target className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    {seg.isSystem && <Badge variant="purple">Built in</Badge>}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  <p className="text-xs text-slate-600 leading-relaxed min-h-[36px]">{seg.description}</p>
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-medium">Estimated Audience</span>
-                    <strong className="text-base font-bold text-slate-900">
-                      {formatNumber(seg.estimatedCount || 0)} users
-                    </strong>
-                  </div>
-                </CardContent>
-                <div className="p-4 bg-slate-50/50 border-t border-slate-100 rounded-b-xl flex items-center justify-between gap-2">
-                  <a href="/api/exports/leads" download>
-                    <Button variant="outline" size="sm" className="text-xs gap-1">
-                      <Download className="w-3.5 h-3.5" />
-                      Export
-                    </Button>
+                  <h3 className="mt-4 font-display text-lg font-bold text-slate-900 dark:text-white">{seg.name}</h3>
+                  <p className="mt-1 min-h-[40px] text-sm text-slate-500 dark:text-slate-400">{seg.description}</p>
+                  <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+                    <strong className="font-display text-2xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatNumber(seg.estimatedCount || 0)}</strong>{" "}
+                    people
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 p-3 dark:border-white/10 dark:bg-white/[0.02]">
+                  <a href="/api/exports/leads" download className={`${btnSecondary} !h-9 !px-3 !text-xs`}>
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    Export
                   </a>
-                  <Link href={`/campaigns/new?source=retargeting&segmentId=${seg._id}`}>
-                    <Button variant="primary" size="sm" className="text-xs gap-1 bg-blue-600 hover:bg-blue-700">
-                      <Send className="w-3.5 h-3.5" />
-                      Launch Campaign
-                    </Button>
+                  <Link href={`/campaigns/new?source=retargeting&segmentId=${seg._id}`} className={`${btnPrimary} !h-9 !px-3 !text-xs`}>
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                    Send campaign
                   </Link>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
+      </div>
 
-        {/* Create Segment Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                  <h3 className="text-base font-bold text-slate-900">Create Composable Audience Segment</h3>
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={() => setShowCreateModal(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-audience-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 id="new-audience-title" className="font-display text-xl font-bold text-slate-900 dark:text-white">
+                  New audience
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">People who match all three rules are included.</p>
+              </div>
+              <button type="button" onClick={() => setShowCreateModal(false)} aria-label="Close" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSegment} className="mt-6 space-y-4">
+              <TextField ref={nameRef} label="Name" required value={newSegmentName} onChange={(e) => setNewSegmentName(e.target.value)} placeholder="e.g. September repeat clickers" />
+              <TextField label="Description (optional)" value={newSegmentDesc} onChange={(e) => setNewSegmentDesc(e.target.value)} placeholder="A short note for your team" />
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <p className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Rules</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <TextField label="Campaigns clicked" type="number" min={1} max={10} value={minCampaigns} onChange={(e) => setMinCampaigns(parseInt(e.target.value, 10) || 1)} hint="At least" />
+                  <TextField label="Total clicks" type="number" min={1} max={20} value={minClicks} onChange={(e) => setMinClicks(parseInt(e.target.value, 10) || 1)} hint="At least" />
+                  <TextField label="Last click (days)" type="number" min={7} max={90} value={withinDays} onChange={(e) => setWithinDays(parseInt(e.target.value, 10) || 30)} hint="Within" />
                 </div>
-                <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
-                  ✕
-                </button>
               </div>
 
-              <form onSubmit={handleCreateSegment} className="space-y-4 text-xs">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Segment Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newSegmentName}
-                    onChange={(e) => setNewSegmentName(e.target.value)}
-                    placeholder="e.g. September High Intent VIPs"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Description (Optional)</label>
-                  <input
-                    type="text"
-                    value={newSegmentDesc}
-                    onChange={(e) => setNewSegmentDesc(e.target.value)}
-                    placeholder="e.g. Users with repeated clicks across 3 campaigns"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                  <div className="font-semibold text-slate-800">Composable Behavioral Rules</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Min Campaigns Clicked</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={minCampaigns}
-                        onChange={(e) => setMinCampaigns(parseInt(e.target.value, 10))}
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Min Total Clicks</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={minClicks}
-                        onChange={(e) => setMinClicks(parseInt(e.target.value, 10))}
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] text-slate-500 mb-1">Recency (Days)</label>
-                      <input
-                        type="number"
-                        min="7"
-                        max="90"
-                        value={withinDays}
-                        onChange={(e) => setWithinDays(parseInt(e.target.value, 10))}
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                  <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                    Save Audience Segment
-                  </Button>
-                </div>
-              </form>
-            </div>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button type="button" onClick={() => setShowCreateModal(false)} className={btnSecondary}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting} className={btnPrimary}>
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  Save audience
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

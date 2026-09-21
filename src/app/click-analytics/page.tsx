@@ -3,34 +3,23 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/ui/StatCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
-import { FunnelChart } from "@/components/ui/FunnelChart";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ClickTrendChart } from "@/components/dashboard/ClickTrendChart";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import {
-  Send,
-  CheckCircle2,
-  MousePointerClick,
-  Users,
-  Percent,
-  Repeat,
-  Sparkles,
-  Search,
-  Filter,
-  Download,
-  Layers,
-  ChevronDown,
-  X,
-  FileSpreadsheet,
-  ShieldCheck,
-} from "lucide-react";
-import { formatNumber, formatPercentage, formatDateTime } from "@/lib/utils";
+import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState, PageHeader, Panel, SearchBox, SelectBox, btnSecondary, tbl } from "@/components/ui/page";
+import { BarChart3, FileSpreadsheet, Flame, MousePointerClick, Percent, ShieldCheck, Users } from "lucide-react";
+import { formatNumber, formatDateTime, cn } from "@/lib/utils";
 
 export default function ClickAnalyticsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading click analytics...</div>}>
+    <Suspense
+      fallback={
+        <AppLayout>
+          <Skeleton className="h-96 rounded-2xl" />
+        </AppLayout>
+      }
+    >
       <ClickAnalyticsContent />
     </Suspense>
   );
@@ -48,30 +37,25 @@ function ClickAnalyticsContent() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync state if URL query param changes
   useEffect(() => {
     const fromUrl = searchParams.get("campaignId") || "all";
-    if (fromUrl !== selectedCampaign) {
-      setSelectedCampaign(fromUrl);
-    }
+    if (fromUrl !== selectedCampaign) setSelectedCampaign(fromUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Load list of all campaigns for dropdown
   useEffect(() => {
     async function loadCampaignsList() {
       try {
         const res = await fetch("/api/campaigns?limit=100");
         const json = await res.json();
-        const list = json.data || [];
-        setCampaigns(list);
+        setCampaigns(json.data || []);
       } catch (err) {
-        console.error("Failed to load campaigns list for analytics filter", err);
+        console.error("Failed to load campaigns list", err);
       }
     }
     loadCampaignsList();
   }, []);
 
-  // Load analytics & attributions whenever selected campaign or search query changes
   useEffect(() => {
     async function loadAnalytics() {
       try {
@@ -80,11 +64,8 @@ function ClickAnalyticsContent() {
           fetch(`/api/analytics?campaignId=${selectedCampaign}`),
           fetch(`/api/analytics/attributions?campaignId=${selectedCampaign}&search=${encodeURIComponent(search)}`),
         ]);
-        const jsonMetrics = await resMetrics.json();
-        const jsonAttributions = await resAttributions.json();
-
-        setData(jsonMetrics);
-        setAttributions(jsonAttributions.data || []);
+        setData(await resMetrics.json());
+        setAttributions((await resAttributions.json()).data || []);
       } catch (err) {
         console.error("Failed to load click analytics", err);
       } finally {
@@ -96,258 +77,148 @@ function ClickAnalyticsContent() {
 
   const handleCampaignChange = (campaignId: string) => {
     setSelectedCampaign(campaignId);
-    if (campaignId === "all") {
-      router.replace("/click-analytics");
-    } else {
-      router.replace(`/click-analytics?campaignId=${campaignId}`);
-    }
+    router.replace(campaignId === "all" ? "/click-analytics" : `/click-analytics?campaignId=${campaignId}`);
   };
 
-  const currentCampaignObj = campaigns.find((c) => c._id === selectedCampaign);
+  const currentCampaign = campaigns.find((c) => c._id === selectedCampaign);
 
   if (isLoading && !data) {
     return (
       <AppLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="h-8 w-64 bg-slate-200 animate-pulse rounded-md" />
-              <div className="h-4 w-96 bg-slate-200 animate-pulse rounded-md" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div key={i} className="h-24 bg-white border border-slate-200 rounded-xl p-4 animate-pulse" />
+          <Skeleton className="h-9 w-72" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
             ))}
           </div>
-          <div className="h-72 bg-white border border-slate-200 rounded-xl p-6 animate-pulse" />
+          <Skeleton className="h-80 rounded-2xl" />
         </div>
       </AppLayout>
     );
   }
 
-  const metrics = data || {
-    smsSent: 0,
-    delivered: 0,
-    totalClicks: 0,
-    uniqueClickers: 0,
-    clickRate: 0,
-    repeatClickers: 0,
-    highIntentLeads: 0,
-    funnel: [
-      { label: "SMS Sent", count: 0, percent: 100, color: "#2563EB" },
-      { label: "Delivered", count: 0, percent: 0, color: "#3B82F6" },
-      { label: "Unique Clickers", count: 0, percent: 0, color: "#7C3AED" },
-      { label: "Repeat Clickers", count: 0, percent: 0, color: "#8B5CF6" },
-      { label: "High Intent Leads", count: 0, percent: 0, color: "#10B981" },
-    ],
-    trend: [],
-  };
+  const m = data || { smsSent: 0, delivered: 0, totalClicks: 0, uniqueClickers: 0, clickRate: 0, highIntentLeads: 0, trend: [] };
+  const funnel = [
+    { label: "Sent", value: m.smsSent || 0, pct: m.smsSent > 0 ? 100 : 0, bar: "from-blue-500 to-sky-400" },
+    { label: "Delivered", value: m.delivered || 0, pct: m.smsSent > 0 ? ((m.delivered || 0) / m.smsSent) * 100 : 0, bar: "from-emerald-500 to-teal-400" },
+    { label: "Clicked", value: m.uniqueClickers || 0, pct: m.delivered > 0 ? ((m.uniqueClickers || 0) / m.delivered) * 100 : 0, bar: "from-indigo-500 to-violet-400" },
+  ];
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header with Campaign Dropdown Selector */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Click Analytics & Attribution</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Recipient-level click telemetry, engagement attribution, and conversion funnel analysis.
-            </p>
-          </div>
+        <PageHeader
+          title="Click analytics"
+          subtitle={currentCampaign ? `Showing ${currentCampaign.name}` : "Who clicked your links, across all campaigns."}
+          actions={
+            <>
+              <SelectBox value={selectedCampaign} onChange={handleCampaignChange} label="Choose a campaign" className="max-w-[16rem]">
+                <option value="all">All campaigns</option>
+                {campaigns.map((camp) => (
+                  <option key={camp._id} value={camp._id}>
+                    {camp.name}
+                  </option>
+                ))}
+              </SelectBox>
+              <a href={selectedCampaign !== "all" ? `/api/exports/campaigns/${selectedCampaign}` : "/api/exports/campaigns"} download className={btnSecondary}>
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                Export CSV
+              </a>
+            </>
+          }
+        />
 
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Campaign Selector Dropdown */}
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-slate-200 rounded-xl shadow-2xs">
-              <Layers className="w-4 h-4 text-blue-600 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Campaign</span>
-                <select
-                  value={selectedCampaign}
-                  onChange={(e) => handleCampaignChange(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer pr-4"
-                >
-                  <option value="all">🌟 All Campaigns (Global Overview)</option>
-                  {campaigns.map((camp) => (
-                    <option key={camp._id} value={camp._id}>
-                      {camp.name} ({camp.recipientCount || 0} SMS) - {camp.status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {selectedCampaign !== "all" && (
-                <button
-                  type="button"
-                  onClick={() => handleCampaignChange("all")}
-                  className="text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-100 transition-colors ml-1"
-                  title="Reset to All Campaigns"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <a
-              href={
-                selectedCampaign !== "all"
-                  ? `/api/exports/campaigns/${selectedCampaign}`
-                  : "/api/exports/campaigns"
-              }
-              download
-            >
-              <Button variant="outline" size="md" className="gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Export CSV</span>
-              </Button>
-            </a>
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard label="Clicks" value={m.totalClicks || 0} tone="indigo" icon={MousePointerClick} sub="Real people, bots removed" />
+          <KpiCard label="People who clicked" value={m.uniqueClickers || 0} tone="blue" icon={Users} sub={m.smsSent > 0 ? `Out of ${formatNumber(m.delivered || 0)} delivered` : "No messages sent yet"} />
+          <KpiCard label="Click rate" value={m.clickRate || 0} suffix="%" decimals={1} tone="emerald" icon={Percent} sub="People who clicked ÷ delivered" />
+          <KpiCard label="Hot leads" value={m.highIntentLeads || 0} tone="amber" icon={Flame} sub={`${formatNumber(m.botScansFiltered || 0)} bot clicks filtered out`} href="/active-leads" />
         </div>
 
-        {/* Selected Campaign Indicator Banner */}
-        {selectedCampaign !== "all" && currentCampaignObj && (
-          <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs flex items-center justify-between text-blue-900">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">Filtered by Campaign:</span>
-              <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold font-mono text-[11px]">
-                {currentCampaignObj.name}
-              </span>
-              <span className="text-blue-600 text-[11px]">
-                (Sender ID: {currentCampaignObj.senderId} • {currentCampaignObj.recipientCount || 0} contacts)
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleCampaignChange("all")}
-              className="text-xs font-semibold text-blue-700 hover:text-blue-900 underline cursor-pointer"
-            >
-              View All Campaigns
-            </button>
-          </div>
-        )}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Panel className="lg:col-span-2" title="Clicks over time" description="Total clicks and people who clicked, per day">
+            {(m.trend || []).length === 0 ? (
+              <EmptyState icon={BarChart3} title="No clicks yet" body="They appear here as soon as someone taps a link." />
+            ) : (
+              <ClickTrendChart data={m.trend} />
+            )}
+          </Panel>
 
-        {/* 8 KPI Cards with Real Human & Bot Defense */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          <StatCard title="SMS Sent" value={formatNumber(metrics.smsSent)} icon={Send} iconBg="bg-slate-100" iconColor="text-slate-700" />
-          <StatCard title="Delivered" value={formatNumber(metrics.delivered)} icon={CheckCircle2} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <StatCard title="Human Clicks" value={formatNumber(metrics.totalClicks)} icon={MousePointerClick} iconBg="bg-purple-50" iconColor="text-purple-600" />
-          <StatCard title="Unique Clickers" value={formatNumber(metrics.uniqueClickers)} icon={Users} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
-          <StatCard title="Real Click Rate" value={`${metrics.clickRate}%`} icon={Percent} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-          <StatCard title="Repeat Clickers" value={formatNumber(metrics.repeatClickers)} icon={Repeat} iconBg="bg-purple-50" iconColor="text-purple-700" />
-          <StatCard title="High Intent" value={formatNumber(metrics.highIntentLeads)} icon={Sparkles} iconBg="bg-emerald-50" iconColor="text-emerald-700" />
-          <StatCard title="Bots Filtered" value={formatNumber(metrics.botScansFiltered || 0)} icon={ShieldCheck} iconBg="bg-slate-100" iconColor="text-emerald-600" />
+          <Panel title="Results" description="From sent to clicked">
+            <div className="space-y-5">
+              {funnel.map((r, i) => (
+                <div key={r.label}>
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">{r.label}</span>
+                    <span className="tabular-nums text-slate-900 dark:text-white">
+                      <strong className="font-bold">{formatNumber(r.value)}</strong>
+                      {i > 0 && <span className="ml-1.5 text-xs text-slate-400">{r.pct.toFixed(1)}%</span>}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                    <div className={cn("h-full rounded-full bg-gradient-to-r", r.bar)} style={{ width: `${Math.min(100, r.pct)}%` }} />
+                  </div>
+                </div>
+              ))}
+              <p className="flex items-start gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
+                Link-preview bots and prefetch requests are filtered out of these numbers.
+              </p>
+            </div>
+          </Panel>
         </div>
 
-        {/* Funnel + Engagement Trend */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div>
-                <CardTitle>Click Trend Analysis</CardTitle>
-                <CardDescription>
-                  {selectedCampaign !== "all"
-                    ? `Daily link click volume breakdown for ${currentCampaignObj?.name || "selected campaign"}`
-                    : "Daily link click volume breakdown across all campaigns"}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ClickTrendChart data={metrics.trend} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Recipient Conversion Funnel</CardTitle>
-                <CardDescription>From broadcast to high-intent leads</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <FunnelChart stages={metrics.funnel} />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* User-Level Click Attribution Table */}
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>User-Level Click Attribution</CardTitle>
-              <CardDescription>Individual recipient interactions mapped by tracking ID and engagement score</CardDescription>
-            </div>
-            <div className="relative w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search phone, tracking ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </CardHeader>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-5 py-3.5">User ID</th>
-                  <th className="px-4 py-3.5">Phone Number</th>
-                  <th className="px-4 py-3.5">Campaign</th>
-                  <th className="px-4 py-3.5">Tracking ID</th>
-                  <th className="px-4 py-3.5">Clicks</th>
-                  <th className="px-4 py-3.5">First Click</th>
-                  <th className="px-4 py-3.5">Last Click</th>
-                  <th className="px-4 py-3.5">Score</th>
-                  <th className="px-5 py-3.5 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {attributions.length === 0 ? (
+        <Panel
+          flush
+          title="Who clicked"
+          description="Each person's clicks and how engaged they are"
+          actions={<SearchBox value={search} onChange={setSearch} placeholder="Search phone or tracking ID" className="w-full sm:w-64 sm:flex-none" />}
+        >
+          {attributions.length === 0 ? (
+            <EmptyState icon={MousePointerClick} title="No clicks to show" body="Nothing recorded for this selection yet." />
+          ) : (
+            <div className={tbl.wrap}>
+              <table className={tbl.table}>
+                <thead className={tbl.head}>
                   <tr>
-                    <td colSpan={9} className="px-5 py-8 text-center text-slate-400">
-                      No click interactions recorded for this selection.
-                    </td>
+                    <th className={tbl.th}>Phone</th>
+                    <th className={`${tbl.th} hidden md:table-cell`}>Campaign</th>
+                    <th className={`${tbl.th} text-right`}>Clicks</th>
+                    <th className={`${tbl.th} hidden lg:table-cell`}>Last click</th>
+                    <th className={tbl.th}>Engagement</th>
+                    <th className={`${tbl.th} text-right`}>Status</th>
                   </tr>
-                ) : (
-                  attributions.map((attr, idx) => (
-                    <tr key={attr._id || idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-5 py-3.5 font-mono font-bold text-slate-900">{attr.userId}</td>
-                      <td className="px-4 py-3.5 font-mono text-slate-600">{attr.phone}</td>
-                      <td className="px-4 py-3.5 font-medium text-slate-800">{attr.campaignName}</td>
-                      <td className="px-4 py-3.5">
-                        <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-mono font-bold border border-purple-100">
-                          {attr.trackingId}
-                        </span>
+                </thead>
+                <tbody className={tbl.body}>
+                  {attributions.map((attr, idx) => (
+                    <tr key={attr._id || idx} className={tbl.row}>
+                      <td className={tbl.td}>
+                        <span className={`block ${tbl.mono}`}>{attr.phone}</span>
+                        <span className="text-xs text-slate-400">ID {attr.trackingId}</span>
                       </td>
-                      <td className="px-4 py-3.5 font-bold text-purple-700">{attr.clicks}</td>
-                      <td className="px-4 py-3.5 text-slate-400 text-[11px]">{formatDateTime(attr.firstClick)}</td>
-                      <td className="px-4 py-3.5 text-slate-400 text-[11px]">{formatDateTime(attr.lastClick)}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-900">{attr.score}</span>
-                          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full"
-                              style={{ width: `${attr.score}%` }}
-                            />
-                          </div>
+                      <td className={`${tbl.td} hidden md:table-cell`}>{attr.campaignName}</td>
+                      <td className={`${tbl.td} text-right font-bold tabular-nums text-indigo-700 dark:text-indigo-300`}>{attr.clicks}</td>
+                      <td className={`${tbl.td} hidden text-xs text-slate-400 lg:table-cell`}>{formatDateTime(attr.lastClick)}</td>
+                      <td className={tbl.td}>
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 text-xs font-bold tabular-nums">{attr.score}</span>
+                          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                            <span className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style={{ width: `${Math.min(100, attr.score)}%` }} />
+                          </span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <Badge variant={attr.status === "High Intent" ? "success" : "default"}>
-                          {attr.status}
-                        </Badge>
+                      <td className={`${tbl.td} text-right`}>
+                        <Badge variant={attr.status === "High Intent" ? "success" : "default"}>{attr.status}</Badge>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
       </div>
     </AppLayout>
   );
 }
-

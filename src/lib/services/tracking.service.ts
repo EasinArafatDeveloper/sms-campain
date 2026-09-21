@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { after } from "next/server";
 import { connectToDatabase } from "@/lib/db/connect";
 import { TrackingLinkModel, ClickEventModel, CampaignRecipientModel, CampaignModel, EngagementProfileModel } from "@/lib/db/models";
 import { EngagementService } from "./engagement.service";
@@ -193,7 +194,7 @@ export class TrackingService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="1;url=${safeHtmlDest}">
+  <noscript><meta http-equiv="refresh" content="0;url=${safeHtmlDest}"></noscript>
   <title>Opening Link...</title>
   <style>
     body {
@@ -266,6 +267,80 @@ export class TrackingService {
 </html>`;
   }
 
+  /** Short-lived in-memory cache so repeat clicks on a warm server skip the database entirely. */
+  private static linkCache = new Map<string, { link: any; expires: number }>();
+  private static LINK_CACHE_TTL_MS = 60_000;
+  private static LINK_CACHE_MAX = 5000;
+
+  /** Runs work after the response is sent (falls back to fire-and-forget outside a request). */
+  private static runInBackground(fn: () => Promise<void>) {
+    try {
+      after(fn);
+    } catch {
+      void fn();
+    }
+  }
+
+  /**
+   * Finds a tracking link with one indexed query on the exact ids.
+   * The slow case-insensitive regex search only runs for legacy links that miss the exact match.
+   */
+  static async findLink(candidates: string[], opts: { activeOnly?: boolean } = {}): Promise<any | null> {
+    const activeOnly = opts.activeOnly !== false;
+    const ids = new Set<string>();
+    for (const raw of candidates) {
+      const c = (raw || "").trim();
+      if (!c) continue;
+      ids.add(c);
+      ids.add(c.toLowerCase());
+      if (c.includes("-")) {
+        const sub = c.split("-").slice(1).join("-");
+        if (sub) {
+          ids.add(sub);
+          ids.add(sub.toLowerCase());
+        }
+      }
+    }
+    if (ids.size === 0) return null;
+
+    const now = Date.now();
+    if (activeOnly) {
+      for (const id of ids) {
+        const hit = this.linkCache.get(id);
+        if (hit && hit.expires > now) return hit.link;
+      }
+    }
+
+    await connectToDatabase();
+    const query: any = { trackingId: { $in: Array.from(ids) } };
+    if (activeOnly) query.status = "active";
+    let link: any = await TrackingLinkModel.findOne(query).lean();
+
+    if (!link) {
+      // Legacy fallback: case-insensitive / uniqueUrl match (slow, only reached on a miss)
+      const first = (candidates[0] || "").trim();
+      const sub = first.includes("-") ? first.split("-").slice(1).join("-") : first;
+      const safeFirst = escapeRegex(first);
+      const safeSub = escapeRegex(sub);
+      const legacy: any = {
+        $or: [
+          { trackingId: { $regex: `^${safeFirst}$`, $options: "i" } },
+          { trackingId: { $regex: `^${safeSub}$`, $options: "i" } },
+          { uniqueUrl: { $regex: `/${safeFirst}$`, $options: "i" } },
+        ],
+      };
+      if (activeOnly) legacy.status = "active";
+      link = await TrackingLinkModel.findOne(legacy).lean();
+    }
+
+    if (link && activeOnly) {
+      if (this.linkCache.size >= this.LINK_CACHE_MAX) this.linkCache.clear();
+      const entry = { link, expires: now + this.LINK_CACHE_TTL_MS };
+      for (const id of ids) this.linkCache.set(id, entry);
+    }
+    return link;
+  }
+
   /**
    * Resolves a tracking ID, classifies bot vs candidate human,
    * logs pending telemetry asynchronously, and returns destination URL / trampoline HTML.
@@ -282,7 +357,8 @@ export class TrackingService {
       secFetchMode?: string;
       accept?: string;
       acceptLanguage?: string;
-    }
+    },
+    candidates: string[] = [trackingId]
   ): Promise<{
     destinationUrl: string | null;
     campaignId?: string;
@@ -292,29 +368,12 @@ export class TrackingService {
     trampolineHtml?: string;
     verifyToken?: string;
   }> {
-    await connectToDatabase();
-
-    const cleanId = (trackingId || "").trim();
-    const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
-
-    const safeCleanId = escapeRegex(cleanId);
-    const safeSubId = escapeRegex(subId);
-
-    const link = await TrackingLinkModel.findOne({
-      $or: [
-        { trackingId: cleanId },
-        { trackingId: cleanId.toLowerCase() },
-        { trackingId: subId },
-        { trackingId: subId.toLowerCase() },
-        { trackingId: { $regex: `^${safeCleanId}$`, $options: "i" } },
-        { trackingId: { $regex: `^${safeSubId}$`, $options: "i" } },
-        { uniqueUrl: { $regex: `/${safeCleanId}$`, $options: "i" } },
-      ],
-      status: "active",
-    });
+    const link = await this.findLink(candidates.length ? candidates : [trackingId]);
     if (!link) {
       return { destinationUrl: null, isBot: false };
     }
+    // Use the stored id so the verification beacon matches the click event exactly
+    const linkTrackingId: string = link.trackingId;
 
     const now = new Date();
     const campId = link.campaignId.toString();
@@ -328,8 +387,8 @@ export class TrackingService {
     // Generate cryptographic verification token for candidate human click
     const verifyToken = crypto.randomBytes(16).toString("hex");
 
-    // Fire background logging without blocking redirect
-    (async () => {
+    // Log after the response has been sent so the redirect is never delayed
+    this.runInBackground(async () => {
       try {
         const ipHash = metadata?.ip
           ? crypto.createHash("sha256").update(metadata.ip).digest("hex").substring(0, 16)
@@ -341,7 +400,7 @@ export class TrackingService {
             organizationId: link.organizationId,
             campaignId: link.campaignId,
             recipientId: link.recipientId,
-            trackingId,
+            trackingId: linkTrackingId,
             destinationUrl: link.destinationUrl,
             clickedAt: now,
             ipHash,
@@ -366,7 +425,7 @@ export class TrackingService {
           organizationId: link.organizationId,
           campaignId: link.campaignId,
           recipientId: link.recipientId,
-          trackingId,
+          trackingId: linkTrackingId,
           destinationUrl: link.destinationUrl,
           clickedAt: now,
           ipHash,
@@ -380,10 +439,10 @@ export class TrackingService {
       } catch (err) {
         console.error("[TrackingService] Error logging candidate click:", err);
       }
-    })();
+    });
 
     const trampolineHtml = !isBot
-      ? this.generateTrampolineHtml(link.destinationUrl, trackingId, verifyToken)
+      ? this.generateTrampolineHtml(link.destinationUrl, linkTrackingId, verifyToken)
       : undefined;
 
     return {
@@ -423,7 +482,12 @@ export class TrackingService {
     }
 
     // Find the most recent pending candidate click event
-    const event = await ClickEventModel.findOne(query).sort({ clickedAt: -1 });
+    let event = await ClickEventModel.findOne(query).sort({ clickedAt: -1 });
+    if (!event) {
+      // The click event is written right after the redirect is sent; give it a moment
+      await new Promise((r) => setTimeout(r, 600));
+      event = await ClickEventModel.findOne(query).sort({ clickedAt: -1 });
+    }
     if (!event) {
       return { success: false, verified: false };
     }
@@ -449,23 +513,7 @@ export class TrackingService {
     await event.save();
 
     // 2. Fetch the tracking link
-    const cleanId = event.trackingId;
-    const subId = cleanId.includes("-") ? cleanId.split("-").slice(1).join("-") : cleanId;
-
-    const safeCleanId = escapeRegex(cleanId);
-    const safeSubId = escapeRegex(subId);
-
-    const link = await TrackingLinkModel.findOne({
-      $or: [
-        { trackingId: cleanId },
-        { trackingId: cleanId.toLowerCase() },
-        { trackingId: subId },
-        { trackingId: subId.toLowerCase() },
-        { trackingId: { $regex: `^${safeCleanId}$`, $options: "i" } },
-        { trackingId: { $regex: `^${safeSubId}$`, $options: "i" } },
-        { uniqueUrl: { $regex: `/${safeCleanId}$`, $options: "i" } },
-      ],
-    });
+    const link = await this.findLink([event.trackingId], { activeOnly: false });
 
     if (!link) {
       return { success: true, verified: true };

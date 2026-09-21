@@ -70,7 +70,6 @@ export class ReportService {
         totalClicks,
         averageClickRate,
         highIntentLeadsGenerated: totalHighIntent,
-        smsVolumeSaved: 0,
       },
       campaigns: campaignReports,
     };

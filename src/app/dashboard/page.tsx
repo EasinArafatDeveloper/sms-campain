@@ -2,76 +2,68 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { StatCard } from "@/components/ui/StatCard";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { FunnelChart } from "@/components/ui/FunnelChart";
 import { ClickTrendChart } from "@/components/dashboard/ClickTrendChart";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { DashboardSkeleton } from "@/components/ui/Skeleton";
 import {
-  EngagementIntelligenceCard,
-  CampaignOptimizationCard,
-} from "@/components/dashboard/EngagementIntelligenceCard";
-import {
-  Send,
-  CheckCircle2,
   AlertTriangle,
-  Clock,
-  MousePointerClick,
-  Users,
-  Repeat,
-  PlusCircle,
   ArrowRight,
   BarChart3,
-  Inbox,
-  Calendar,
-  RefreshCw,
+  CheckCircle2,
   Coins,
-  ShieldAlert,
+  Flame,
+  MousePointerClick,
+  PlusCircle,
+  RefreshCw,
+  Send,
 } from "lucide-react";
-import { formatNumber, formatPercentage, formatDate, cn } from "@/lib/utils";
+import { formatNumber, formatDate, cn } from "@/lib/utils";
 
 type DateRange = "7d" | "30d" | "90d" | "all";
 
 const RANGE_LABELS: Record<DateRange, string> = {
-  "7d": "Last 7 Days",
-  "30d": "Last 30 Days",
-  "90d": "Last 90 Days",
-  all: "All Time",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+  all: "All time",
 };
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const reduce = useReducedMotion();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>("30d");
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchDashboard = useCallback(
-    async (range: DateRange, isManual = false) => {
-      try {
-        if (isManual) setIsRefreshing(true);
-        else setIsLoading(true);
+  const fetchDashboard = useCallback(async (range: DateRange, isManual = false) => {
+    try {
+      if (isManual) setIsRefreshing(true);
+      else setIsLoading(true);
 
-        const res = await fetch(`/api/dashboard?range=${range}`);
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-          setLastUpdated(new Date());
-        }
-      } catch (err) {
-        console.error("Failed to load dashboard metrics", err);
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+      const res = await fetch(`/api/dashboard?range=${range}`);
+      if (res.ok) {
+        setData(await res.json());
+        setLastUpdated(new Date());
       }
-    },
-    []
-  );
+    } catch (err) {
+      console.error("Failed to load dashboard metrics", err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDashboard(dateRange);
@@ -85,383 +77,318 @@ export default function DashboardPage() {
     );
   }
 
-  const d = data || {
-    totalCampaigns: 0,
-    smsSent: 0,
-    delivered: 0,
-    failed: 0,
-    pendingRetry: 0,
-    deliveryRate: 0,
-    failedRate: 0,
-    totalClicks: 0,
-    uniqueClickers: 0,
-    clickRate: 0,
-    repeatClickers: 0,
-    highIntentLeads: 0,
-    potentialReductionPercent: 0,
-    recentCampaigns: [],
-    clickTrend: [],
-    funnel: {
-      sent: 0,
-      delivered: 0,
-      uniqueClickers: 0,
-      repeatClickers: 0,
-      highIntentLeads: 0,
-    },
-    leadDistribution: {
-      highlyActive: 0,
-      engaged: 0,
-      lowEngagement: 0,
-      total: 0,
-    },
-  };
+  const d = data || {};
+  const smsSent: number = d.smsSent || 0;
+  const delivered: number = d.delivered || 0;
+  const failed: number = d.failed || 0;
+  const retrying: number = d.pendingRetry || 0;
+  const uniqueClickers: number = d.uniqueClickers || 0;
+  const totalClicks: number = d.totalClicks || 0;
+  const deliveryRate: number = d.deliveryRate || 0;
+  const clickRate: number = d.clickRate || 0;
+  const hotLeads: number = d.highIntentLeads || 0;
+  const recentCampaigns: any[] = d.recentCampaigns || [];
+  const clickTrend: any[] = d.clickTrend || [];
 
-  const funnelStages = [
-    { label: "SMS Sent", count: d.funnel?.sent || 0, percent: 100, color: "#2563EB" },
-    {
-      label: "Delivered",
-      count: d.funnel?.delivered || 0,
-      percent: d.funnel?.sent > 0 ? Number(((d.funnel.delivered / d.funnel.sent) * 100).toFixed(1)) : 0,
-      color: "#3B82F6",
-    },
-    {
-      label: "Unique Clickers",
-      count: d.funnel?.uniqueClickers || 0,
-      percent: d.funnel?.delivered > 0 ? Number(((d.funnel.uniqueClickers / d.funnel.delivered) * 100).toFixed(1)) : 0,
-      color: "#7C3AED",
-    },
-    {
-      label: "Repeat Clickers",
-      count: d.funnel?.repeatClickers || 0,
-      percent: d.funnel?.uniqueClickers > 0 ? Number(((d.funnel.repeatClickers / d.funnel.uniqueClickers) * 100).toFixed(1)) : 0,
-      color: "#8B5CF6",
-    },
-    {
-      label: "High Intent",
-      count: d.funnel?.highIntentLeads || 0,
-      percent: d.funnel?.repeatClickers > 0 ? Number(((d.funnel.highIntentLeads / d.funnel.repeatClickers) * 100).toFixed(1)) : 0,
-      color: "#10B981",
-    },
-  ];
-
-  const recentCampaigns = d.recentCampaigns || [];
-  const clickTrend = d.clickTrend || [];
   const smsCredits = user?.smsCredits ?? 0;
+  const isSuper = user?.platformRole === "superadmin";
+  const firstName = user?.name?.split(" ")[0];
+  const attention = failed + retrying;
+  const hasCampaigns = recentCampaigns.length > 0;
+
+  const rise = (i: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 14 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.4, delay: 0.06 * i, ease: [0.22, 1, 0.36, 1] as const },
+  });
+
+  const results = [
+    { label: "Sent", value: smsSent, pct: smsSent > 0 ? 100 : 0, note: "messages", bar: "from-blue-500 to-sky-400" },
+    { label: "Delivered", value: delivered, pct: deliveryRate, note: "of sent", bar: "from-emerald-500 to-teal-400" },
+    { label: "Clicked", value: uniqueClickers, pct: clickRate, note: "of delivered", bar: "from-indigo-500 to-violet-400" },
+  ];
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Zero / Low SMS Credit Warning Banner */}
+        {/* Credit warning: only one, and only when it matters */}
         {smsCredits <= 0 ? (
-          <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-900 dark:text-rose-200 shadow-xs animate-in fade-in duration-200">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
+          <motion.div
+            {...rise(0)}
+            role="status"
+            className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500 text-white">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </span>
               <div>
-                <div className="font-bold text-sm">Your SMS Credit Balance is 0</div>
-                <div className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-                  Campaigns will be blocked from sending until credits are refilled.
-                </div>
+                <p className="text-sm font-bold text-rose-900 dark:text-rose-200">You are out of SMS credits</p>
+                <p className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">
+                  {user && !user.isPhoneVerified
+                    ? "Sending is paused. Verify your phone number to get 50 free credits."
+                    : isSuper
+                    ? "Sending is paused until credits are added to this workspace."
+                    : "Sending is paused. Ask the Postman team to add credits to your workspace."}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 self-end sm:self-center">
-              {!user?.isPhoneVerified && (
-                <Link
-                  href="/profile"
-                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs transition-colors"
-                >
-                  Verify Phone (+50 Free Credits)
-                </Link>
-              )}
-              <Link
-                href={user?.platformRole === "superadmin" ? "/admin" : "/settings"}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors"
-              >
-                Top Up Balance
+            {user && !user.isPhoneVerified ? (
+              <Link href="/profile" className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+                Verify phone · +50 credits
               </Link>
-            </div>
-          </div>
+            ) : isSuper ? (
+              <Link href="/admin" className="inline-flex h-10 items-center justify-center rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+                Add credits
+              </Link>
+            ) : null}
+          </motion.div>
         ) : smsCredits < 10 ? (
-          <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between text-amber-900 dark:text-amber-200 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <Coins className="w-4 h-4 text-amber-600 shrink-0" />
-              <div className="text-xs font-semibold">
-                Low SMS Balance: You have only <strong>{smsCredits}</strong> credits remaining.
-              </div>
-            </div>
-            <Link
-              href={user?.platformRole === "superadmin" ? "/admin" : "/profile"}
-              className="text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline"
-            >
-              Get More Credits →
-            </Link>
-          </div>
+          <motion.div {...rise(0)} role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <span className="flex items-center gap-2.5">
+              <Coins className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+              Only <strong>{smsCredits}</strong> credits left.
+            </span>
+            {user && !user.isPhoneVerified && (
+              <Link href="/profile" className="shrink-0 font-semibold text-amber-800 hover:underline dark:text-amber-300">
+                Verify phone for +50
+              </Link>
+            )}
+          </motion.div>
         ) : null}
 
-        {/* Page Header & Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        {/* Header */}
+        <motion.div {...rise(1)} className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Campaign Dashboard
+            <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              {greeting()}
+              {firstName ? `, ${firstName}` : ""}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Real-time SMS delivery tracking, click attribution, and customer engagement intelligence.
-            </p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Here is how your campaigns are doing.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Date Range Selector Buttons */}
-            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0.5 shadow-2xs">
-              {(["7d", "30d", "90d", "all"] as DateRange[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setDateRange(r)}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer",
-                    dateRange === r
-                      ? "bg-blue-600 text-white shadow-2xs font-semibold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
-                  )}
-                >
-                  {RANGE_LABELS[r]}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div role="tablist" aria-label="Date range" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900">
+              {(Object.keys(RANGE_LABELS) as DateRange[]).map((r) => {
+                const active = dateRange === r;
+                return (
+                  <button
+                    key={r}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setDateRange(r)}
+                    className={cn(
+                      "relative rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                      active ? "text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                    )}
+                  >
+                    {active && (
+                      <motion.span layoutId="range-pill" className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 shadow-md shadow-indigo-600/25" transition={{ type: "spring", stiffness: 420, damping: 34 }} />
+                    )}
+                    <span className="relative">{RANGE_LABELS[r]}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Manual Refresh Button */}
             <button
               onClick={() => fetchDashboard(dateRange, true)}
               disabled={isRefreshing}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
-              title="Refresh live data"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:border-white/10 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white"
+              aria-label="Refresh"
+              title={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Refresh"}
             >
-              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-blue-600")} />
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin text-indigo-600")} />
             </button>
 
-            {/* Action Buttons */}
-            <Link href="/link-generator">
-              <Button variant="outline" size="md">
-                Link Generator
-              </Button>
-            </Link>
-            <Link href="/campaigns/new">
-              <Button variant="primary" size="md" className="gap-1.5 shadow-xs">
-                <PlusCircle className="w-4 h-4" />
-                <span>Create SMS Campaign</span>
-              </Button>
+            <Link
+              href="/campaigns/new"
+              className="group relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-sm font-semibold text-white shadow-md shadow-indigo-600/30 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.97]"
+            >
+              <span aria-hidden="true" className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent motion-safe:animate-shimmer" />
+              <PlusCircle className="relative h-4 w-4" aria-hidden="true" />
+              <span className="relative">New campaign</span>
             </Link>
           </div>
-        </div>
+        </motion.div>
 
-        {/* 6 Core KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <StatCard
-            title="Total Campaigns"
-            value={d.totalCampaigns}
-            subtitle={d.totalCampaigns > 0 ? "In selected range" : "No campaigns"}
+        {/* Four numbers that matter */}
+        <motion.div {...rise(2)} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            label="SMS credits"
+            value={smsCredits}
+            tone={smsCredits <= 0 ? "rose" : smsCredits < 10 ? "amber" : "indigo"}
+            icon={Coins}
+            sub={smsCredits <= 0 ? "Sending is paused" : "1 credit = 1 SMS"}
+            href="/profile"
+          />
+          <KpiCard
+            label="Messages sent"
+            value={smsSent}
+            tone="blue"
             icon={Send}
-            iconColor="text-blue-600 dark:text-blue-400"
-            iconBg="bg-blue-50 dark:bg-blue-950/60"
+            sub={smsSent > 0 ? `${formatNumber(delivered)} delivered · ${deliveryRate}%` : "Nothing sent in this period"}
+            href="/campaigns"
           />
-          <StatCard
-            title="SMS Sent"
-            value={d.smsSent}
-            subtitle={d.smsSent > 0 ? "Dispatched volume" : "0 messages"}
-            icon={Send}
-            iconColor="text-slate-700 dark:text-slate-300"
-            iconBg="bg-slate-100 dark:bg-slate-800"
+          <KpiCard
+            label="People who clicked"
+            value={uniqueClickers}
+            tone="emerald"
+            icon={MousePointerClick}
+            sub={smsSent > 0 ? `${clickRate}% click rate · ${formatNumber(totalClicks)} total clicks` : "Clicks appear after you send"}
+            href="/click-analytics"
           />
-          <StatCard
-            title="Delivered"
-            value={d.delivered}
-            subtitle={`${d.deliveryRate}% rate`}
-            icon={CheckCircle2}
-            iconColor="text-emerald-600 dark:text-emerald-400"
-            iconBg="bg-emerald-50 dark:bg-emerald-950/60"
+          <KpiCard
+            label="Needs attention"
+            value={attention}
+            tone={attention > 0 ? (failed > 0 ? "rose" : "amber") : "emerald"}
+            icon={attention > 0 ? AlertTriangle : CheckCircle2}
+            sub={attention > 0 ? `${formatNumber(failed)} failed · ${formatNumber(retrying)} retrying` : "No failed or retrying messages"}
+            href="/delivery-queue"
           />
-          <StatCard
-            title="Delivery Issues"
-            value={d.failed + d.pendingRetry}
-            subtitle={`${d.failed} failed • ${d.pendingRetry} retrying`}
-            icon={AlertTriangle}
-            iconColor={d.failed > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-500"}
-            iconBg={d.failed > 0 ? "bg-rose-50 dark:bg-rose-950/60" : "bg-slate-100 dark:bg-slate-800"}
-          />
-          <StatCard
-            title="Unique Clickers"
-            value={d.uniqueClickers}
-            subtitle={`${d.clickRate}% CTR`}
-            icon={Users}
-            iconColor="text-indigo-600 dark:text-indigo-400"
-            iconBg="bg-indigo-50 dark:bg-indigo-950/60"
-          />
-          <StatCard
-            title="Repeat Clickers"
-            value={d.repeatClickers}
-            subtitle={d.repeatClickers > 0 ? "High intent buyers" : "0 users"}
-            icon={Repeat}
-            iconColor="text-purple-600 dark:text-purple-400"
-            iconBg="bg-purple-50 dark:bg-purple-950/60"
-          />
-        </div>
+        </motion.div>
 
-        {/* Main Analytics Grid: Click Engagement Over Time + Engagement Intelligence */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div>
-                <CardTitle>Click Engagement Over Time</CardTitle>
-                <CardDescription>Daily comparison of total click volume vs unique recipient clicks</CardDescription>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Live Data</span>
-                <span className="text-[10px] text-slate-400">
-                  • {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {clickTrend.length === 0 ? (
-                <div className="h-64 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
-                  <BarChart3 className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-2" />
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    No Click Interactions Recorded ({RANGE_LABELS[dateRange]})
+        {!hasCampaigns ? (
+          <motion.div {...rise(3)}>
+            <GettingStarted phoneVerified={!!user?.isPhoneVerified} isAllTime={dateRange === "all"} onShowAllTime={() => setDateRange("all")} />
+          </motion.div>
+        ) : (
+          <>
+            {/* Chart + results */}
+            <motion.div {...rise(3)} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900 lg:col-span-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">Clicks over time</h2>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Total clicks and people who clicked · {RANGE_LABELS[dateRange]}</p>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 max-w-sm">
-                    When recipients click on trackable short URLs in campaigns sent during this period, real-time attribution appears here.
-                  </p>
+                  {lastUpdated && (
+                    <span className="shrink-0 text-[11px] text-slate-400">
+                      Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <ClickTrendChart data={clickTrend} />
-              )}
-            </CardContent>
-          </Card>
-
-          <EngagementIntelligenceCard
-            highIntentCount={d.highIntentLeads || 0}
-            uniqueClickers={d.uniqueClickers || 0}
-            repeatClickers={d.repeatClickers || 0}
-            dateRangeLabel={RANGE_LABELS[dateRange]}
-          />
-        </div>
-
-        {/* Mid Grid: Recent Campaigns Performance + Engagement Funnel */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Campaign Performance Table */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div>
-                <CardTitle>Recent Campaign Performance</CardTitle>
-                <CardDescription>Latest SMS broadcasts with link attribution metrics</CardDescription>
-              </div>
-              <Link href="/campaigns" className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                <span>View All</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </CardHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-100 dark:border-slate-800">
-                  <tr>
-                    <th className="px-6 py-3">Campaign</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Sent</th>
-                    <th className="px-4 py-3">Delivered</th>
-                    <th className="px-4 py-3">Clicks</th>
-                    <th className="px-4 py-3">CTR</th>
-                    <th className="px-6 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {recentCampaigns.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
-                        <Inbox className="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
-                        <div className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                          No campaigns found in {RANGE_LABELS[dateRange]}
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Create your first trackable SMS campaign to start broadcasting.
-                        </p>
-                        <Link href="/campaigns/new" className="mt-3 inline-block">
-                          <Button variant="primary" size="sm" className="gap-1.5">
-                            <PlusCircle className="w-3.5 h-3.5" />
-                            Create First Campaign
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
+                <div className="mt-4">
+                  {clickTrend.length === 0 ? (
+                    <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center dark:border-white/10 dark:bg-white/[0.02]">
+                      <BarChart3 className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No clicks in this period yet</p>
+                      <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">Clicks on your campaign links show up here as they happen.</p>
+                    </div>
                   ) : (
-                    recentCampaigns.map((camp: any) => {
-                      const stats = camp.statistics || {};
-                      const ctr = stats.delivered > 0 ? ((stats.uniqueClickers || 0) / stats.delivered) * 100 : 0;
+                    <ClickTrendChart data={clickTrend} />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
+                  <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">Results</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">From sent to clicked</p>
+                  <div className="mt-5 space-y-4">
+                    {results.map((r, i) => (
+                      <div key={r.label}>
+                        <div className="flex items-baseline justify-between text-sm">
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{r.label}</span>
+                          <span className="tabular-nums text-slate-900 dark:text-white">
+                            <strong className="font-bold">{formatNumber(r.value)}</strong>
+                            {i > 0 && <span className="ml-1.5 text-xs text-slate-400">{r.pct}% {r.note}</span>}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                          <motion.div
+                            className={cn("h-full origin-left rounded-full bg-gradient-to-r", r.bar)}
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: Math.min(100, r.pct) / 100 }}
+                            transition={{ duration: 0.8, delay: 0.1 * i, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-6 text-white shadow-lg shadow-amber-500/20">
+                  <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+                  <div className="relative flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-amber-50">Hot leads</p>
+                      <p className="mt-1 font-display text-4xl font-extrabold tabular-nums">{formatNumber(hotLeads)}</p>
+                    </div>
+                    <Flame className="h-8 w-8 text-white/90" aria-hidden="true" />
+                  </div>
+                  <p className="relative mt-2 text-xs leading-relaxed text-amber-50">
+                    {hotLeads > 0 ? "People who clicked in several campaigns. Good ones to follow up with." : "Appear when a contact clicks links in 3 different campaigns."}
+                  </p>
+                  <Link href="/active-leads" className="relative mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/95 px-3.5 text-xs font-semibold text-amber-700 transition-transform hover:-translate-y-0.5 active:scale-[0.97]">
+                    View leads <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Recent campaigns */}
+            <motion.div {...rise(4)} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900">
+              <div className="flex items-center justify-between px-6 py-4">
+                <div>
+                  <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">Recent campaigns</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{formatNumber(d.totalCampaigns || 0)} in this period</p>
+                </div>
+                <Link href="/campaigns" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+                  View all <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[440px] text-left text-sm">
+                  <thead className="border-y border-slate-100 bg-slate-50/70 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
+                    <tr>
+                      <th className="px-6 py-3">Campaign</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Sent</th>
+                      <th className="hidden px-4 py-3 text-right lg:table-cell">Delivered</th>
+                      <th className="px-4 py-3 text-right">Clicks</th>
+                      <th className="px-6 py-3 text-right">Click rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/10">
+                    {recentCampaigns.map((camp: any) => {
+                      const s = camp.statistics || {};
+                      const ctr = s.delivered > 0 ? ((s.uniqueClickers || 0) / s.delivered) * 100 : 0;
                       return (
-                        <tr key={camp._id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="px-6 py-3.5 font-medium text-slate-900 dark:text-white">
-                            <div>{camp.name}</div>
-                            <div className="text-[10px] text-slate-400">
-                              Sender: {camp.senderId} • {formatDate(camp.createdAt)}
-                            </div>
+                        <tr key={camp._id} className="group transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]">
+                          <td className="px-6 py-3.5">
+                            <Link href={`/click-analytics?campaignId=${camp._id}`} className="block focus-visible:outline-none">
+                              <span className="font-semibold text-slate-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">{camp.name}</span>
+                              <span className="mt-0.5 block text-xs text-slate-400">
+                                {camp.senderId} · {formatDate(camp.createdAt)}
+                              </span>
+                            </Link>
                           </td>
                           <td className="px-4 py-3.5">
                             <StatusBadge status={camp.status} />
                           </td>
-                          <td className="px-4 py-3.5 font-medium">{formatNumber(stats.sent || 0)}</td>
-                          <td className="px-4 py-3.5">{formatNumber(stats.delivered || 0)}</td>
-                          <td className="px-4 py-3.5 text-purple-700 dark:text-purple-400 font-semibold">
-                            {formatNumber(stats.totalClicks || 0)}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-medium">
-                              {formatPercentage(ctr || 0)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3.5 text-right">
-                            <Link href={`/click-analytics?campaignId=${camp._id}`}>
-                              <span className="text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer">
-                                Analytics
+                          <td className="px-4 py-3.5 text-right font-medium tabular-nums text-slate-700 dark:text-slate-200">{formatNumber(s.sent || 0)}</td>
+                          <td className="hidden px-4 py-3.5 text-right tabular-nums text-slate-600 dark:text-slate-300 lg:table-cell">{formatNumber(s.delivered || 0)}</td>
+                          <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-indigo-700 dark:text-indigo-300">{formatNumber(s.totalClicks || 0)}</td>
+                          <td className="px-6 py-3.5">
+                            <div className="ml-auto flex w-24 items-center justify-end gap-2">
+                              <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200">{ctr.toFixed(1)}%</span>
+                              <span className="h-1.5 w-10 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                                <span className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${Math.min(100, ctr * 3)}%` }} />
                               </span>
-                            </Link>
+                            </div>
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          {/* Engagement Funnel Card */}
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Engagement Funnel</CardTitle>
-                <CardDescription>Conversion flow from sent to high-intent leads</CardDescription>
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </CardHeader>
-            <CardContent>
-              <FunnelChart stages={funnelStages} />
-              <div className="mt-5 p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                <span>Funnel Conversion</span>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {d.funnel?.sent > 0 ? `${((d.funnel.highIntentLeads / d.funnel.sent) * 100).toFixed(1)}% High Intent` : "0%"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Optimization Opportunity Banner */}
-        <CampaignOptimizationCard
-          volumeReductionPercent={d.potentialReductionPercent || 0}
-          highIntentCount={d.highIntentLeads || 0}
-          totalAudience={d.leadDistribution?.total || 0}
-        />
+            </motion.div>
+          </>
+        )}
       </div>
     </AppLayout>
   );
 }
-

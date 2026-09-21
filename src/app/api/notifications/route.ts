@@ -22,11 +22,14 @@ export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
     // 2. Compute dynamic operational notifications/alerts
     const [org, user, failedCount] = await Promise.all([
       OrganizationModel.findById(orgObjId).select("smsCredits name").lean(),
-      UserModel.findById(userObjId).select("isPhoneVerified phone").lean(),
+      UserModel.findById(userObjId).select("isPhoneVerified phone platformRole").lean(),
       DeliveryJobModel.countDocuments({ organizationId: orgObjId, status: "failed" }),
     ]);
 
     const systemAlerts: any[] = [];
+
+    // Where can THIS user actually do something about low credits? Only verify phone (+50) or, for admins, the admin panel.
+    const creditLink = user && !user.isPhoneVerified ? "/profile" : user?.platformRole === "superadmin" ? "/admin" : undefined;
 
     // Credit alert
     if (org) {
@@ -34,18 +37,18 @@ export const GET = withTenant(async (req: NextRequest, ctx: TenantContext) => {
         systemAlerts.push({
           id: "alert-zero-credit",
           title: "Zero SMS Credits",
-          message: "Your SMS balance is 0. Campaigns cannot be dispatched until credits are added.",
+          message: "Your SMS balance is 0. Sending is paused until credits are added to your workspace.",
           type: "error",
-          link: "/admin",
+          link: creditLink,
           createdAt: new Date().toISOString(),
         });
       } else if (org.smsCredits < 10) {
         systemAlerts.push({
           id: "alert-low-credit",
           title: "Low SMS Credit Warning",
-          message: `Only ${org.smsCredits} SMS credits remaining. Top up to ensure uninterrupted broadcasts.`,
+          message: `Only ${org.smsCredits} SMS credits remaining.`,
           type: "warning",
-          link: "/admin",
+          link: creditLink,
           createdAt: new Date().toISOString(),
         });
       }

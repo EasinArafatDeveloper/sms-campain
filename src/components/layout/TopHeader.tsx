@@ -21,7 +21,7 @@ import {
   ExternalLink,
   ChevronDown,
 } from "lucide-react";
-import { ThemeToggle } from "../theme/ThemeToggle";
+import { ThemeIconButton } from "../theme/ThemeIconButton";
 import { cn } from "@/lib/utils";
 
 interface TopHeaderProps {
@@ -91,18 +91,13 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
         .slice(0, 2)
     : "U";
 
-  const userRoleDisplay =
-    user?.platformRole === "superadmin"
-      ? "SuperAdmin"
-      : user?.role === "owner"
-      ? "Workspace Owner"
-      : "Admin";
+  const userRoleDisplay = user?.platformRole === "superadmin" ? "Super admin" : user?.role === "owner" ? "Owner" : "Member";
 
   const smsCredits = user?.smsCredits ?? 0;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/85 px-4 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/80 sm:px-6">
       {/* Left Area: Mobile Hamburger + Search Input */}
       <div className="flex items-center gap-3 flex-1 max-w-lg">
         {/* Mobile Hamburger Button */}
@@ -121,8 +116,9 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search campaigns, tracking IDs... (Enter)"
-            className="w-full pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/80 focus:bg-white dark:focus:bg-slate-900 text-xs border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-900 dark:text-slate-100 placeholder-slate-400"
+            placeholder="Search campaigns…"
+            aria-label="Search campaigns"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-all hover:bg-slate-100/80 focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
           />
         </form>
       </div>
@@ -133,7 +129,7 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
         <Link
           href={user?.platformRole === "superadmin" ? "/admin" : "/profile"}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs",
+            "flex h-10 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold shadow-sm transition-all cursor-pointer",
             smsCredits <= 0
               ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-100/80"
               : smsCredits < 10
@@ -148,7 +144,7 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
         </Link>
 
         {/* Theme Switcher Toggle */}
-        <ThemeToggle />
+        <ThemeIconButton />
 
         {/* Dynamic Notifications Popover */}
         <div className="relative" ref={notifRef}>
@@ -157,7 +153,7 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
               setShowNotifications(!showNotifications);
               if (!showNotifications) loadNotifications();
             }}
-            className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors relative cursor-pointer"
+            className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-white"
             aria-label="View notifications"
           >
             <Bell className="w-4 h-4" />
@@ -172,7 +168,7 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
             <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-dropdown border border-slate-200 dark:border-slate-800 p-4 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="font-semibold text-slate-900 dark:text-slate-100 pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-bold">
-                  <span>System Alerts & Notifications</span>
+                  <span>Notifications</span>
                   {unreadCount > 0 && (
                     <span className="px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 text-[10px] font-bold">
                       {unreadCount}
@@ -253,7 +249,7 @@ export function TopHeader({ onToggleMobileNav }: TopHeaderProps) {
             </div>
             <div className="hidden lg:block text-left">
               <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-none truncate max-w-[130px]">
-                {user?.name || "Loading..."}
+                {user?.name || <span className="inline-block h-3 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />}
               </div>
               <div className="text-[10px] text-slate-500 mt-0.5 capitalize">
                 {userRoleDisplay}

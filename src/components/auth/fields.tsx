@@ -8,7 +8,7 @@ type IconType = React.ComponentType<{ className?: string }>;
 
 interface TextFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   label: string;
-  icon: IconType;
+  icon?: IconType;
   error?: string;
   hint?: string;
   /** slot on the right inside the input (e.g. show/hide password) */
@@ -29,14 +29,15 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(func
         {label}
       </label>
       <div className="group relative">
-        <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+        {Icon && <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" />}
         <input
           ref={ref}
           id={inputId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
-            "h-12 w-full rounded-xl border bg-white pl-11 text-base text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:outline-none focus:ring-4 dark:bg-slate-900/70 dark:text-white dark:placeholder:text-slate-500 sm:text-sm",
+            "h-12 w-full rounded-xl border bg-white text-base text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:outline-none focus:ring-4 dark:bg-slate-900/70 dark:text-white dark:placeholder:text-slate-500 sm:text-sm",
+            Icon ? "pl-11" : "pl-4",
             right ? "pr-12" : "pr-4",
             error
               ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15 dark:border-rose-500/60"
@@ -76,7 +77,7 @@ const STRENGTH_LABELS = ["Weak", "Okay", "Good", "Strong", "Very strong"];
 const STRENGTH_COLORS = ["bg-rose-500", "bg-amber-500", "bg-lime-500", "bg-emerald-500", "bg-emerald-500"];
 
 interface PasswordFieldProps extends Omit<TextFieldProps, "icon" | "right" | "type"> {
-  icon: IconType;
+  icon?: IconType;
   showStrength?: boolean;
 }
 

@@ -114,8 +114,8 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Current password and new password are required" }, { status: 400 });
       }
 
-      if (newPassword.length < 6) {
-        return NextResponse.json({ error: "New password must be at least 6 characters long" }, { status: 400 });
+      if (newPassword.length < 8) {
+        return NextResponse.json({ error: "New password must be at least 8 characters long" }, { status: 400 });
       }
 
       if (confirmPassword && newPassword !== confirmPassword) {

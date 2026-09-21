@@ -64,18 +64,12 @@ export async function GET(
       acceptLanguage,
     };
 
-    // 1. Try trackingIdCandidate (e.g. "eid-a8k7" or "a8k7")
-    let result = await TrackingService.resolveAndTrackClick(trackingIdCandidate, requestMeta);
-
-    // 2. Fallback to hyphenated (e.g. "eid-a8k7")
-    if (!result.destinationUrl && hyphenCandidate !== trackingIdCandidate) {
-      result = await TrackingService.resolveAndTrackClick(hyphenCandidate, requestMeta);
-    }
-
-    // 3. Fallback to full path (e.g. "eid/a8k7")
-    if (!result.destinationUrl && fullPathCandidate !== trackingIdCandidate) {
-      result = await TrackingService.resolveAndTrackClick(fullPathCandidate, requestMeta);
-    }
+    // One indexed lookup for every possible spelling of the link (eid-a8k7, a8k7, eid/a8k7)
+    const result = await TrackingService.resolveAndTrackClick(trackingIdCandidate, requestMeta, [
+      trackingIdCandidate,
+      hyphenCandidate,
+      fullPathCandidate,
+    ]);
 
     if (!result.destinationUrl) {
       // Fallback redirect if tracking link expired or not found

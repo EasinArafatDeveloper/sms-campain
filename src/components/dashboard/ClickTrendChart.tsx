@@ -19,7 +19,7 @@ export interface ClickTrendChartProps {
 
 export function ClickTrendChart({ data }: ClickTrendChartProps) {
   return (
-    <div className="h-72 w-full">
+    <div className="h-72 w-full text-slate-200 dark:text-white/10">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <defs>
@@ -32,11 +32,11 @@ export function ClickTrendChart({ data }: ClickTrendChartProps) {
               <stop offset="95%" stopColor="#7C3AED" stopOpacity={0.0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" />
           <XAxis
             dataKey="date"
             tickLine={false}
-            axisLine={{ stroke: "#E2E8F0" }}
+            axisLine={{ stroke: "currentColor" }}
             tick={{ fill: "#64748B", fontSize: 12 }}
           />
           <YAxis
@@ -64,7 +64,7 @@ export function ClickTrendChart({ data }: ClickTrendChartProps) {
             align="right"
             iconType="circle"
             formatter={(value) => (
-              <span className="text-xs font-medium text-slate-600">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
                 {value === "totalClicks" ? "Total Clicks" : "Unique Clickers"}
               </span>
             )}

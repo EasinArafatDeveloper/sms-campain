@@ -1,39 +1,84 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { calculateSmsSegments, formatNumber, normalizePhoneNumber } from "@/lib/utils";
+import { Notice, PageHeader, Panel, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
+import { TextField } from "@/components/auth/fields";
+import { calculateSmsSegments, cn, formatNumber, normalizePhoneNumber } from "@/lib/utils";
 import {
-  Send,
-  Users,
-  Link2,
-  CheckCircle2,
-  Sparkles,
-  ArrowRight,
-  ArrowLeft,
-  UploadCloud,
-  FileText,
   AlertCircle,
-  Smartphone,
-  Download,
-  Trash2,
+  ArrowLeft,
+  ArrowRight,
   Check,
+  CheckCheck,
+  CheckCircle2,
   ClipboardList,
   Copy,
-  CheckCheck,
-  FileSpreadsheet,
+  Database,
+  Download,
+  FileText,
+  Link2,
+  Loader2,
+  Send,
+  Sparkles,
+  Trash2,
+  UploadCloud,
+  Users,
 } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 
 export default function CreateCampaignPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading campaign wizard...</div>}>
+    <Suspense fallback={<AppLayout><div className="p-8 text-center text-sm text-slate-400">Loading…</div></AppLayout>}>
       <CreateCampaignForm />
     </Suspense>
+  );
+}
+
+const STEPS = [
+  { num: 1, label: "Message", icon: Send },
+  { num: 2, label: "Audience", icon: Users },
+  { num: 3, label: "Link", icon: Link2 },
+  { num: 4, label: "Review", icon: CheckCircle2 },
+];
+
+const fieldCls =
+  "w-full rounded-xl border border-slate-200 bg-white text-base text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-slate-900/70 dark:text-white dark:placeholder:text-slate-500 sm:text-sm";
+const labelCls = "mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200";
+
+function isHttpUrl(v: string) {
+  try {
+    const u = new URL(v.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** A message bubble inside a small phone, so people see exactly what recipients get. */
+function SmsPreview({ sender, text }: { sender: string; text: string }) {
+  return (
+    <div className="mx-auto w-full max-w-[280px] rounded-[2rem] border border-slate-200 bg-slate-50 p-3 shadow-xl shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950">
+      <div className="rounded-[1.5rem] bg-white p-4 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+          <span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-blue-600 text-white">
+              <Send className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            <span className="max-w-[120px] truncate">{sender}</span>
+          </span>
+          <span className="text-[11px] text-slate-400">Now</span>
+        </div>
+        <div className="mt-4 min-h-[96px]">
+          <p className="w-fit max-w-full break-words rounded-2xl rounded-tl-md bg-slate-100 px-3.5 py-2.5 text-[13px] leading-relaxed text-slate-800 dark:bg-white/10 dark:text-slate-100">
+            {text || "Your message appears here"}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -41,13 +86,15 @@ function CreateCampaignForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRetargeting = searchParams.get("source") === "retargeting";
+  const reduce = useReducedMotion();
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState(
-    isRetargeting ? "High-Intent VIP Retargeting" : ""
+    isRetargeting ? "Follow-up campaign" : ""
   );
   const [senderId, setSenderId] = useState("8809612781020");
   const [message, setMessage] = useState(
@@ -57,7 +104,7 @@ function CreateCampaignForm() {
     isRetargeting ? "segment" : "upload"
   );
   const [audienceName, setAudienceName] = useState(
-    isRetargeting ? "High-Intent Leads Segment" : "CSV Upload Contact List"
+    isRetargeting ? "Saved contacts" : "CSV Upload Contact List"
   );
   const [recipientCount, setRecipientCount] = useState(0);
   const [destinationUrl, setDestinationUrl] = useState("https://yourwebsite.com/offer");
@@ -172,7 +219,7 @@ function CreateCampaignForm() {
     }
 
     if (parsed.length === 0) {
-      setUploadError("No valid phone numbers found in file. Ensure phone numbers are provided (e.g. 017XXXXXXXX or 88017XXXXXXXX).");
+      setUploadError("No valid phone numbers found in this file. Use numbers like 017XXXXXXXX or 88017XXXXXXXX.");
       return;
     }
 
@@ -343,6 +390,7 @@ function CreateCampaignForm() {
 
   const handleLaunchCampaign = async () => {
     setIsSubmitting(true);
+    setLaunchError(null);
     try {
       const rawPrefix = (urlPrefix || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
       const finalPrefix = rawPrefix || (linkStyle === "direct" ? "" : "eid");
@@ -369,11 +417,11 @@ function CreateCampaignForm() {
       if (res.ok) {
         router.push(`/link-generator?campaignId=${data.campaign?._id || ""}`);
       } else {
-        alert(data.error || "Failed to create campaign");
+        setLaunchError(data.error || "The campaign could not be created. Please try again.");
       }
     } catch (err) {
       console.error(err);
-      alert("Error submitting campaign");
+      setLaunchError("Something went wrong while creating the campaign. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -406,364 +454,387 @@ function CreateCampaignForm() {
   const sampleMessage = message.replace(/\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/gi, sampleTrackingUrl);
   const hasLinkTag = /\{(?:TRACKABLE_LINK|link|url|track_link|tracking_link)\}/i.test(message);
 
+  const usesSaved = audienceType === "existing" || audienceType === "segment";
+  const canNext1 = !!name.trim() && hasLinkTag;
+  const canNext2 = usesSaved || uploadedContacts.length > 0;
+  const canNext3 = isHttpUrl(destinationUrl);
+  const audienceLabel = usesSaved ? "All saved contacts" : `${formatNumber(recipientCount)} recipients`;
+
+  const goTo = (n: number) => {
+    if (n < step) setStep(n);
+  };
+
+  const FooterBar = ({ children }: { children: React.ReactNode }) => (
+    <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-5 dark:border-white/10">{children}</div>
+  );
+  const BackBtn = ({ to }: { to: number }) => (
+    <button type="button" onClick={() => setStep(to)} className={btnSecondary}>
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      Back
+    </button>
+  );
+
+  const audienceCards = [
+    {
+      id: "upload" as const,
+      icon: UploadCloud,
+      title: "Upload a file",
+      body: "CSV, TXT or TSV",
+      active: audienceType === "upload",
+      pick: () => {
+        setAudienceType("upload");
+        setAudienceName(uploadedContacts.length > 0 && uploadedFile ? `${uploadedFile.name} (${uploadedContacts.length} contacts)` : "CSV Upload Contact List");
+        setRecipientCount(uploadedFile ? uploadedContacts.length : 0);
+        setUploadError(null);
+      },
+    },
+    {
+      id: "paste" as const,
+      icon: ClipboardList,
+      title: "Paste numbers",
+      body: "Type or paste a list",
+      active: audienceType === "paste",
+      pick: () => {
+        setAudienceType("paste");
+        setAudienceName(pastedStats.valid > 0 ? `Pasted Contact List (${pastedStats.valid} contacts)` : "Pasted Contact List");
+        setRecipientCount(pastedStats.valid);
+        setUploadError(null);
+      },
+    },
+    {
+      id: "existing" as const,
+      icon: Database,
+      title: "Saved contacts",
+      body: "Everyone already in your workspace",
+      active: usesSaved,
+      pick: () => {
+        setAudienceType("existing");
+        setAudienceName("Saved contacts");
+        setRecipientCount(0);
+        setUploadError(null);
+      },
+    },
+  ];
+
+  const slide = reduce ? {} : { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -6 }, transition: { duration: 0.22 } };
+
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create SMS Campaign</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Configure your campaign, select audience, and generate trackable URLs for every recipient.
-            </p>
-          </div>
-          {isRetargeting && (
-            <Badge variant="purple" className="px-3 py-1 text-xs">
-              <Sparkles className="w-3.5 h-3.5 mr-1" />
-              Retargeting Mode
-            </Badge>
-          )}
-        </div>
+      <div className="mx-auto max-w-5xl space-y-6 pb-8">
+        <PageHeader
+          title="New campaign"
+          subtitle="Write your message, choose who gets it, set where the link goes, then send."
+          actions={
+            isRetargeting ? (
+              <Badge variant="purple" className="gap-1 !px-3 !py-1.5 text-xs">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                Follow-up
+              </Badge>
+            ) : undefined
+          }
+        />
 
-        {/* Step Indicator */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { num: 1, label: "Campaign Details", icon: Send },
-            { num: 2, label: "Audience", icon: Users },
-            { num: 3, label: "Tracking Link", icon: Link2 },
-            { num: 4, label: "Review & Send", icon: CheckCircle2 },
-          ].map((s) => {
-            const isCurrent = step === s.num;
-            const isCompleted = step > s.num;
-            const Icon = s.icon;
+        {/* stepper */}
+        <ol className="flex items-center" aria-label="Progress">
+          {STEPS.map((s, i) => {
+            const done = step > s.num;
+            const current = step === s.num;
             return (
-              <div
-                key={s.num}
-                className={`p-3 rounded-xl border transition-all flex items-center gap-3 ${
-                  isCurrent
-                    ? "bg-blue-50/80 border-blue-300 text-blue-700 shadow-xs"
-                    : isCompleted
-                    ? "bg-white border-slate-200 text-emerald-600"
-                    : "bg-white border-slate-200 text-slate-400"
-                }`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                    isCurrent
-                      ? "bg-blue-600 text-white"
-                      : isCompleted
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
+              <li key={s.num} className={cn("flex items-center", i < STEPS.length - 1 && "flex-1")}>
+                <button
+                  type="button"
+                  onClick={() => goTo(s.num)}
+                  disabled={!done}
+                  aria-current={current ? "step" : undefined}
+                  className={cn(
+                    "group flex items-center gap-2.5 rounded-xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                    done && "cursor-pointer"
+                  )}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : s.num}
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-xs font-semibold leading-tight">{s.label}</div>
-                  <div className="text-[10px] text-slate-400">Step {s.num} of 4</div>
-                </div>
-              </div>
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all",
+                      current && "bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-600/30",
+                      done && "bg-emerald-500 text-white",
+                      !current && !done && "bg-slate-100 text-slate-400 dark:bg-white/10 dark:text-slate-500"
+                    )}
+                  >
+                    {done ? <Check className="h-4 w-4" aria-hidden="true" /> : s.num}
+                  </span>
+                  <span
+                    className={cn(
+                      "hidden text-sm font-semibold sm:block",
+                      current ? "text-slate-900 dark:text-white" : done ? "text-slate-700 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                </button>
+                {i < STEPS.length - 1 && (
+                  <span className="relative mx-3 h-0.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10" aria-hidden="true">
+                    <span className={cn("absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-500", done ? "w-full" : "w-0")} />
+                  </span>
+                )}
+              </li>
             );
           })}
-        </div>
+        </ol>
 
-        {/* Step 1: Campaign Details */}
-        {step === 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 1: Campaign Details</CardTitle>
-              <CardDescription>Define campaign metadata, approved Sender ID, and SMS message copy</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Campaign Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. Flash Weekend 20% Discount"
-                />
-              </div>
+        <AnimatePresence mode="wait" initial={false}>
+          {/* ------------------------------------------------ step 1 */}
+          {step === 1 && (
+            <motion.div key="s1" {...slide} className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+              <Panel title="Write your message" description="This is the SMS every recipient receives">
+                <div className="space-y-5">
+                  <TextField label="Campaign name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Eid weekend offer" hint="Only you see this. It helps you find the campaign later." />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Sender ID</label>
-                <select
-                  value={senderId}
-                  onChange={(e) => setSenderId(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="8809612781020">8809612781020 (Official ZendSMS Sender ID)</option>
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">Sender IDs registered with ZendSMS gateway.</p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1.5">
-                  <label className="block text-xs font-semibold text-slate-700">SMS Message Copy</label>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 hidden sm:inline">Insert at cursor:</span>
-                    <button
-                      type="button"
-                      onClick={() => handleInsertMergeTag("{TRACKABLE_LINK}")}
-                      className="text-[11px] bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Link2 className="w-3 h-3" /> &#123;TRACKABLE_LINK&#125;
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInsertMergeTag("{link}")}
-                      className="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold px-2 py-0.5 rounded border border-indigo-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Link2 className="w-3 h-3" /> &#123;link&#125;
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInsertMergeTag("{name}")}
-                      className="text-[11px] bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Users className="w-3 h-3" /> &#123;name&#125;
-                    </button>
+                  <div>
+                    <label htmlFor="sender" className={labelCls}>
+                      Sender ID
+                    </label>
+                    <select id="sender" value={senderId} onChange={(e) => setSenderId(e.target.value)} className={cn(fieldCls, "h-12 px-4")}>
+                      <option value="8809612781020">8809612781020</option>
+                    </select>
                   </div>
-                </div>
-                <textarea
-                  ref={messageTextareaRef}
-                  rows={4}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="w-full p-3.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  placeholder="Type message here... e.g. 2026 new offer unlock {link} end date offer 12 march"
-                />
 
-                {/* SMS Segmentation Bar */}
-                <div className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex-wrap gap-2">
-                  <div className="flex items-center gap-4">
-                    <span>
-                      Characters: <strong className="text-slate-900">{smsStats.characters}</strong>
-                    </span>
-                    <span>
-                      Segments: <strong className="text-slate-900">{smsStats.segments} SMS</strong>
-                    </span>
-                    <span>
-                      Encoding: <strong>{smsStats.isUnicode ? "Unicode" : "GSM-7 (Standard)"}</strong>
-                    </span>
-                  </div>
-                  {hasLinkTag ? (
-                    <span className="text-emerald-600 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Merge tag included
-                    </span>
-                  ) : (
-                    <span className="text-amber-600 font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" /> Missing link merge tag &#123;link&#125; or &#123;TRACKABLE_LINK&#125;
-                    </span>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end">
-              <Button onClick={() => setStep(2)} disabled={!name || !hasLinkTag}>
-                Next: Audience Selection <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-
-        {/* Step 2: Audience */}
-        {step === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 2: Audience Selection</CardTitle>
-              <CardDescription>Upload contact spreadsheet, directly copy-paste numbers, or target existing audience</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Audience Type Selection Tabs */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div
-                  onClick={() => {
-                    setAudienceType("upload");
-                    setAudienceName(uploadedContacts.length > 0 && uploadedFile ? `${uploadedFile.name} (${uploadedContacts.length} contacts)` : "CSV Upload Contact List");
-                    setRecipientCount(uploadedFile ? uploadedContacts.length : 0);
-                  }}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    audienceType === "upload"
-                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <UploadCloud className="w-5 h-5 text-blue-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">Upload File</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">CSV, TXT, TSV file</div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    setAudienceType("paste");
-                    setAudienceName(pastedStats.valid > 0 ? `Pasted Contact List (${pastedStats.valid} contacts)` : "Pasted Contact List");
-                    setRecipientCount(pastedStats.valid);
-                  }}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    audienceType === "paste"
-                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <ClipboardList className="w-5 h-5 text-indigo-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">Copy & Paste</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Paste numbers directly</div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    setAudienceType("existing");
-                    setAudienceName("Saved Database Contacts");
-                    setRecipientCount(100);
-                  }}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    audienceType === "existing"
-                      ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <Users className="w-5 h-5 text-slate-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">Existing Audience</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Saved database contacts</div>
-                </div>
-
-                <div
-                  onClick={() => {
-                    setAudienceType("segment");
-                    setAudienceName("High-Intent Leads Segment");
-                    setRecipientCount(50);
-                  }}
-                  className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    audienceType === "segment"
-                      ? "border-purple-500 bg-purple-50/50 shadow-xs ring-2 ring-purple-500/20"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <Sparkles className="w-5 h-5 text-purple-600 mb-2" />
-                  <div className="font-semibold text-xs text-slate-900">High-Intent Leads</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Multi-click retargeting</div>
-                </div>
-              </div>
-
-              {/* Option 1: CSV / TXT File Upload */}
-              {audienceType === "upload" && (
-                <div className="space-y-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,.txt,.tsv"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-
-                  {uploadedContacts.length === 0 || !uploadedFile ? (
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDragging(true);
-                      }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`p-8 border-2 border-dashed rounded-xl text-center space-y-2 cursor-pointer transition-all ${
-                        isDragging
-                          ? "border-blue-500 bg-blue-50/70"
-                          : "border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50"
-                      }`}
-                    >
-                      <UploadCloud className="w-10 h-10 text-blue-500 mx-auto" />
-                      <div className="text-xs font-semibold text-slate-800">
-                        Click to Browse or Drag & Drop your CSV contact file
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        Supported formats: .csv, .txt, .tsv. Columns: <code>phone</code>, <code>name</code>, <code>custom_id</code>
-                      </p>
-                      <div className="pt-2 flex items-center justify-center gap-3">
-                        <Button
+                  <div>
+                    <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                      <label htmlFor="message" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Message
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            fileInputRef.current?.click();
-                          }}
+                          onClick={() => handleInsertMergeTag("{TRACKABLE_LINK}")}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
                         >
-                          Select File
-                        </Button>
-                        <Button
+                          <Link2 className="h-3.5 w-3.5" aria-hidden="true" /> Add link
+                        </button>
+                        <button
                           type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadSampleCsv();
-                          }}
-                          className="gap-1 text-xs"
+                          onClick={() => handleInsertMergeTag("{name}")}
+                          className="inline-flex h-8 items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Sample CSV Template</span>
-                        </Button>
+                          <Users className="h-3.5 w-3.5" aria-hidden="true" /> Add name
+                        </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900">{uploadedFile?.name || "contacts.csv"}</div>
-                            <div className="text-[11px] text-emerald-700 font-medium">
-                              ✓ {formatNumber(uploadedContacts.length)} valid contacts successfully loaded
+                    <textarea
+                      id="message"
+                      ref={messageTextareaRef}
+                      rows={5}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      className={cn(fieldCls, "p-4 leading-relaxed")}
+                      placeholder="Write your message and use Add link to place the tracking link"
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="tabular-nums">
+                        {smsStats.characters} characters · {smsStats.segments} SMS · {smsStats.isUnicode ? "Unicode" : "Standard"}
+                      </span>
+                      {hasLinkTag ? (
+                        <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Link included
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                          <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" /> Add the link to continue
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <FooterBar>
+                  <span />
+                  <button type="button" onClick={() => setStep(2)} disabled={!canNext1} className={btnPrimary}>
+                    Choose audience <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </FooterBar>
+              </Panel>
+
+              <div className="hidden lg:block">
+                <div className="sticky top-24">
+                  <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">What they will see</p>
+                  <SmsPreview sender={senderId} text={sampleMessage} />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ------------------------------------------------ step 2 */}
+          {step === 2 && (
+            <motion.div key="s2" {...slide}>
+              <Panel title="Who should get it?" description="Pick where the phone numbers come from">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {audienceCards.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={c.pick}
+                      aria-pressed={c.active}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                        c.active
+                          ? "border-indigo-500 bg-indigo-50/60 ring-4 ring-indigo-500/10 dark:bg-indigo-500/10"
+                          : "border-slate-200 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900 dark:hover:border-white/20"
+                      )}
+                    >
+                      <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", c.active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300")}>
+                        <c.icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </span>
+                      <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">{c.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{c.body}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-6">
+                  {/* upload */}
+                  {audienceType === "upload" && (
+                    <div className="space-y-3">
+                      <input ref={fileInputRef} type="file" accept=".csv,.txt,.tsv" className="hidden" onChange={handleFileUpload} />
+                      {uploadedContacts.length === 0 || !uploadedFile ? (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDragging(true);
+                          }}
+                          onDragLeave={() => setIsDragging(false)}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileInputRef.current?.click()}
+                          className={cn(
+                            "cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                            isDragging ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10" : "border-slate-200 hover:border-indigo-400 hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/[0.03]"
+                          )}
+                        >
+                          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                            <UploadCloud className="h-6 w-6" aria-hidden="true" />
+                          </span>
+                          <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">Drop your file here, or click to browse</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            One phone number per row. Optional columns: <code className="font-mono">name</code>, <code className="font-mono">custom_id</code>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadSampleCsv();
+                            }}
+                            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+                          >
+                            <Download className="h-3.5 w-3.5" aria-hidden="true" /> Download a sample file
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                <FileText className="h-5 w-5" aria-hidden="true" />
+                              </span>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">{uploadedFile?.name}</p>
+                                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">{formatNumber(uploadedContacts.length)} valid contacts loaded</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => fileInputRef.current?.click()} className={cn(btnSecondary, "!h-9 !px-3 !text-xs")}>
+                                Replace
+                              </button>
+                              <button type="button" onClick={handleRemoveFile} aria-label="Remove file" className={cn(btnSecondary, "!h-9 !w-9 !px-0 text-rose-600")}>
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-xs"
-                          >
-                            Replace File
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleRemoveFile}
-                            className="text-rose-600 hover:text-rose-700"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* paste */}
+                  {audienceType === "paste" && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <label htmlFor="paste" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                          Phone numbers
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button type="button" onClick={handlePasteFromClipboard} className={cn(btnSecondary, "!h-8 !px-2.5 !text-xs")}>
+                            {copiedNotification ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                            {copiedNotification ? "Pasted" : "Paste from clipboard"}
+                          </button>
+                          <button type="button" onClick={handleLoadSampleNumbers} className={cn(btnSecondary, "!h-8 !px-2.5 !text-xs")}>
+                            <Sparkles className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" /> Example
+                          </button>
+                          {pastedText && (
+                            <button type="button" onClick={handleClearPasted} className={cn(btnSecondary, "!h-8 !px-2.5 !text-xs text-rose-600")}>
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      {/* Contact Preview Table */}
-                      <div className="bg-white border border-emerald-100 rounded-lg overflow-hidden text-xs">
-                        <div className="px-3 py-1.5 bg-slate-50 font-semibold text-slate-600 border-b border-slate-100 text-[11px]">
-                          Preview of Loaded Contacts (Showing first 5 of {uploadedContacts.length}):
+                      <textarea
+                        id="paste"
+                        rows={6}
+                        value={pastedText}
+                        onChange={(e) => handlePasteParse(e.target.value)}
+                        placeholder={`01711234567\n8801812345678, Rahim Ahmed\n+8801912345679, Farhana Islam`}
+                        className={cn(fieldCls, "p-4 font-mono leading-relaxed")}
+                      />
+                      <p className="text-xs text-slate-500 dark:text-slate-400">One number per line, or separated by commas. You can add a name after the number. 017… is converted to 88017… for you.</p>
+                      {pastedStats.total > 0 && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-slate-50 px-4 py-2.5 text-xs font-medium dark:bg-white/[0.04]">
+                          <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {formatNumber(pastedStats.valid)} valid
+                          </span>
+                          {pastedStats.duplicates > 0 && <span className="text-amber-700 dark:text-amber-400">{formatNumber(pastedStats.duplicates)} duplicates removed</span>}
+                          {pastedStats.invalid > 0 && <span className="text-rose-700 dark:text-rose-400">{formatNumber(pastedStats.invalid)} invalid</span>}
                         </div>
-                        <table className="w-full text-left">
-                          <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/50">
+                      )}
+                    </div>
+                  )}
+
+                  {/* saved contacts */}
+                  {usesSaved && (
+                    <div className="flex items-start gap-3 rounded-xl bg-indigo-50 p-4 text-sm dark:bg-indigo-500/10">
+                      <Database className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
+                      <p className="text-indigo-900 dark:text-indigo-200">
+                        The message goes to every active contact already saved in your workspace (up to 5,000). Contacts appear here after your first upload or paste.
+                      </p>
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="mt-3">
+                      <Notice type="error">{uploadError}</Notice>
+                    </div>
+                  )}
+
+                  {/* preview table */}
+                  {!usesSaved && uploadedContacts.length > 0 && (
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10">
+                      <p className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 dark:bg-white/[0.04] dark:text-slate-300">
+                        Preview: first {Math.min(5, uploadedContacts.length)} of {formatNumber(uploadedContacts.length)}
+                      </p>
+                      <div className={tbl.wrap}>
+                        <table className={tbl.table}>
+                          <thead className={tbl.head}>
                             <tr>
-                              <th className="px-3 py-1.5">#</th>
-                              <th className="px-3 py-1.5">Phone</th>
-                              <th className="px-3 py-1.5">Name</th>
-                              <th className="px-3 py-1.5">Custom ID</th>
+                              <th className={tbl.th}>Phone</th>
+                              <th className={tbl.th}>Name</th>
+                              <th className={`${tbl.th} hidden sm:table-cell`}>Custom ID</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                          <tbody className={tbl.body}>
                             {uploadedContacts.slice(0, 5).map((c, i) => (
-                              <tr key={i}>
-                                <td className="px-3 py-1.5 font-sans text-slate-400">{i + 1}</td>
-                                <td className="px-3 py-1.5 font-semibold text-slate-800">{c.phone}</td>
-                                <td className="px-3 py-1.5 font-sans text-slate-600">{c.name || "-"}</td>
-                                <td className="px-3 py-1.5 text-slate-500">{c.customId || "-"}</td>
+                              <tr key={i} className={tbl.row}>
+                                <td className={`${tbl.td} ${tbl.mono} font-semibold`}>{c.phone}</td>
+                                <td className={tbl.td}>{c.name || "—"}</td>
+                                <td className={`${tbl.td} hidden text-slate-500 sm:table-cell`}>{c.customId || "—"}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -771,469 +842,237 @@ function CreateCampaignForm() {
                       </div>
                     </div>
                   )}
-
-                  {uploadError && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                      <span>{uploadError}</span>
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* Option 2: Copy & Paste Phone Numbers */}
-              {audienceType === "paste" && (
-                <div className="p-4.5 rounded-xl border border-indigo-200/80 bg-gradient-to-b from-indigo-50/40 to-white space-y-3.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-indigo-100">
-                    <div>
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <ClipboardList className="w-4 h-4 text-indigo-600" />
-                        <span>Direct Copy & Paste Numbers (নাম্বার কপি ও পেস্ট করুন)</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Paste numbers separated by newline, comma, or space. Optional: <code>017XXXXXXXX, Name, ID</code>
-                      </p>
-                    </div>
+                <div className="mt-6 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-white/[0.04]">
+                  <span className="text-slate-500 dark:text-slate-400">Sending to</span>
+                  <strong className="font-semibold tabular-nums text-slate-900 dark:text-white">{audienceLabel}</strong>
+                </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePasteFromClipboard}
-                        className="text-[11px] h-7 px-2.5 bg-white border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-semibold gap-1 shadow-2xs"
-                      >
-                        {copiedNotification ? (
-                          <>
-                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Pasted!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>Paste from Clipboard</span>
-                          </>
-                        )}
-                      </Button>
+                <FooterBar>
+                  <BackBtn to={1} />
+                  <button type="button" onClick={() => setStep(3)} disabled={!canNext2} className={btnPrimary}>
+                    Set the link <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </FooterBar>
+              </Panel>
+            </motion.div>
+          )}
 
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleLoadSampleNumbers}
-                        className="text-[11px] h-7 px-2.5 text-slate-600 hover:text-indigo-600 font-medium gap-1"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Sample Numbers</span>
-                      </Button>
+          {/* ------------------------------------------------ step 3 */}
+          {step === 3 && (
+            <motion.div key="s3" {...slide}>
+              <Panel title="Where should the link go?" description="Each recipient gets their own short link that opens this page">
+                <div className="space-y-6">
+                  <TextField
+                    label="Destination page"
+                    type="url"
+                    inputMode="url"
+                    value={destinationUrl}
+                    onChange={(e) => setDestinationUrl(e.target.value)}
+                    placeholder="https://yourwebsite.com/offer"
+                    error={destinationUrl && !canNext3 ? "Enter a full link that starts with https://" : undefined}
+                    hint={canNext3 ? "People are sent here when they tap the SMS link." : undefined}
+                  />
 
-                      {pastedText && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleClearPasted}
-                          className="text-[11px] h-7 px-2 text-rose-600 hover:bg-rose-50"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-0.5" />
-                          <span>Clear</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Textarea Input */}
                   <div>
-                    <textarea
-                      rows={6}
-                      value={pastedText}
-                      onChange={(e) => handlePasteParse(e.target.value)}
-                      placeholder={`01711234567\n8801812345678, Rahim Ahmed\n+8801912345679, Farhana Islam, USR-101\n01612345670\n01512345671`}
-                      className="w-full p-3.5 text-xs font-mono border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-inner leading-relaxed"
-                    />
+                    <p className={labelCls}>Link style</p>
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                      {(
+                        [
+                          { id: "hyphen", title: "Prefix and code", path: `/${activePrefix || "eid"}-${sampleTrackingId}`, tag: "Recommended" },
+                          { id: "slash", title: "Folder style", path: `/${activePrefix || "eid"}/${sampleTrackingId}` },
+                          { id: "direct", title: "Code only", path: `/${sampleTrackingId}`, tag: "Shortest" },
+                        ] as const
+                      ).map((o) => {
+                        const active = linkStyle === o.id;
+                        return (
+                          <button
+                            key={o.id}
+                            type="button"
+                            onClick={() => setLinkStyle(o.id)}
+                            aria-pressed={active}
+                            className={cn(
+                              "rounded-xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                              active
+                                ? "border-indigo-500 bg-indigo-50/60 ring-4 ring-indigo-500/10 dark:bg-indigo-500/10"
+                                : "border-slate-200 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-slate-900 dark:hover:border-white/20"
+                            )}
+                          >
+                            <span className="flex items-center justify-between gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                              {o.title}
+                              {"tag" in o && o.tag && (
+                                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{o.tag}</span>
+                              )}
+                            </span>
+                            <span className="mt-1 block truncate font-mono text-xs text-indigo-600 dark:text-indigo-300">{o.path}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* Live Parsing Metrics & Badges */}
-                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs bg-indigo-50/60 p-2.5 rounded-lg border border-indigo-100">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 font-semibold text-emerald-700">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <strong>{formatNumber(pastedStats.valid)}</strong> Valid Numbers
-                      </span>
-                      {pastedStats.duplicates > 0 && (
-                        <span className="flex items-center gap-1 font-medium text-amber-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          {formatNumber(pastedStats.duplicates)} Duplicates Removed
-                        </span>
-                      )}
-                      {pastedStats.invalid > 0 && (
-                        <span className="flex items-center gap-1 font-medium text-rose-700">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          {formatNumber(pastedStats.invalid)} Invalid Formats
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-[11px] text-indigo-700 font-medium">
-                      Auto-Normalizes <code>017...</code> → <code>88017...</code>
-                    </div>
-                  </div>
-
-                  {/* Preview Table of Pasted Contacts */}
-                  {uploadedContacts.length > 0 && (
-                    <div className="bg-white border border-indigo-100 rounded-lg overflow-hidden text-xs shadow-2xs">
-                      <div className="px-3 py-1.5 bg-slate-50 font-semibold text-slate-700 border-b border-slate-100 text-[11px] flex items-center justify-between">
-                        <span>Preview of Pasted Contacts (Showing first 5 of {uploadedContacts.length}):</span>
-                        <span className="text-[10px] text-emerald-600 font-bold">✓ Ready for Campaign</span>
-                      </div>
-                      <table className="w-full text-left">
-                        <thead className="text-[10px] text-slate-400 uppercase bg-slate-50/50 border-b border-slate-100">
-                          <tr>
-                            <th className="px-3 py-1.5">#</th>
-                            <th className="px-3 py-1.5">Normalized Phone</th>
-                            <th className="px-3 py-1.5">Contact Name</th>
-                            <th className="px-3 py-1.5">Custom ID</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                          {uploadedContacts.slice(0, 5).map((c, i) => (
-                            <tr key={i} className="hover:bg-indigo-50/30">
-                              <td className="px-3 py-1.5 font-sans text-slate-400">{i + 1}</td>
-                              <td className="px-3 py-1.5 font-semibold text-indigo-900">{c.phone}</td>
-                              <td className="px-3 py-1.5 font-sans text-slate-600">{c.name || "-"}</td>
-                              <td className="px-3 py-1.5 text-slate-500">{c.customId || "-"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {uploadError && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-lg flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                      <span>{uploadError}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Audience Summary Banner */}
-              <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-semibold text-blue-900">Selected Audience:</span> {audienceName}
-                </div>
-                <div className="font-bold text-blue-700">{formatNumber(recipientCount)} Recipients</div>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-between">
-              <Button variant="secondary" onClick={() => setStep(1)}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
-              <Button
-                onClick={() => setStep(3)}
-                disabled={
-                  (audienceType === "upload" && uploadedContacts.length === 0) ||
-                  (audienceType === "paste" && uploadedContacts.length === 0)
-                }
-              >
-                Next: Tracking Link Config <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-
-        {/* Step 3: Tracking Link */}
-        {step === 3 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Step 3: Tracking Link Configuration</CardTitle>
-              <CardDescription>Setup destination URL and short tracking code generator settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Destination URL</label>
-                <input
-                  type="url"
-                  value={destinationUrl}
-                  onChange={(e) => setDestinationUrl(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://yourwebsite.com/special-offer"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">Users clicking the SMS short link will redirect here.</p>
-              </div>
-
-              {/* Link URL Structure & Custom Prefix */}
-              <div className="p-4 rounded-xl border border-blue-200/80 bg-blue-50/40 space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-800 mb-1.5">
-                    Link URL Style (লিংক ফরম্যাট স্টাইল)
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setLinkStyle("hyphen")}
-                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
-                        linkStyle === "hyphen"
-                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
-                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-slate-900 flex items-center justify-between">
-                        <span>Hyphenated</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold">Recommended</span>
-                      </div>
-                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
-                        /{activePrefix || "eid"}-{sampleTrackingId}
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setLinkStyle("slash")}
-                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
-                        linkStyle === "slash"
-                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
-                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-slate-900">Directory Slash</div>
-                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
-                        /{activePrefix || "eid"}/{sampleTrackingId}
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setLinkStyle("direct")}
-                      className={`p-2 text-left rounded-lg border transition-all cursor-pointer ${
-                        linkStyle === "direct"
-                          ? "bg-white border-blue-600 ring-2 ring-blue-500/20 shadow-xs"
-                          : "bg-white/70 border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
-                      <div className="text-[11px] font-bold text-slate-900">Direct Code</div>
-                      <div className="font-mono text-[10px] text-blue-600 mt-0.5 truncate">
-                        /{sampleTrackingId}
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {linkStyle !== "direct" && (
-                  <div className="space-y-2 pt-1 border-t border-blue-100">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-semibold text-slate-700">
-                        Custom Keyword / Prefix (কাস্টম নাম বা কিওয়ার্ড)
+                  {linkStyle !== "direct" && (
+                    <div>
+                      <label htmlFor="prefix" className={labelCls}>
+                        Link word
                       </label>
-                      <span className="text-[11px] text-blue-700 font-mono font-bold">
-                        {linkStyle === "hyphen" ? `/${activePrefix || "eid"}-[code]` : `/${activePrefix || "eid"}/[code]`}
+                      <div className="flex">
+                        <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 px-3 font-mono text-xs text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                          {origin.replace(/^https?:\/\//, "")}/
+                        </span>
+                        <input
+                          id="prefix"
+                          type="text"
+                          value={urlPrefix}
+                          onChange={(e) => setUrlPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ""))}
+                          placeholder="eid"
+                          className={cn(fieldCls, "h-12 rounded-l-none px-4 font-mono font-semibold")}
+                        />
+                      </div>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        {["eid", "offer", "deal", "promo", "vip", "sale", "t"].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => setUrlPrefix(preset)}
+                            className={cn(
+                              "rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors",
+                              activePrefix === preset
+                                ? "border-indigo-600 bg-indigo-600 text-white"
+                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-white/5"
+                            )}
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <details className="group rounded-xl border border-slate-200 dark:border-white/10">
+                    <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Code format and length
+                      <span className="text-xs font-medium text-slate-400">
+                        {trackingFormat === "alphanumeric" ? "Letters and digits" : "Digits only"}, {trackingLength} characters
                       </span>
+                    </summary>
+                    <div className="grid gap-5 border-t border-slate-200 p-4 dark:border-white/10 sm:grid-cols-2">
+                      <div>
+                        <p className={labelCls}>Format</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(
+                            [
+                              { id: "alphanumeric", label: "Letters + digits" },
+                              { id: "numeric", label: "Digits only" },
+                            ] as const
+                          ).map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setTrackingFormat(f.id)}
+                              aria-pressed={trackingFormat === f.id}
+                              className={cn(
+                                "h-10 rounded-lg border text-xs font-semibold transition-colors",
+                                trackingFormat === f.id
+                                  ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                                  : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                              )}
+                            >
+                              {f.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className={labelCls}>Code length</p>
+                        <div className="flex gap-1.5">
+                          {[3, 4, 5, 6, 7, 8].map((len) => (
+                            <button
+                              key={len}
+                              type="button"
+                              onClick={() => setTrackingLength(len)}
+                              aria-pressed={trackingLength === len}
+                              className={cn(
+                                "h-10 flex-1 rounded-lg border text-xs font-semibold transition-colors",
+                                trackingLength === len
+                                  ? "border-indigo-600 bg-indigo-600 text-white"
+                                  : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                              )}
+                            >
+                              {len}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Shorter codes keep the SMS short. 6 is a good balance.</p>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <span className="inline-flex items-center px-3 py-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-mono text-xs">
-                        {origin.replace(/^https?:\/\//, "")}/
-                      </span>
-                      <input
-                        type="text"
-                        value={urlPrefix}
-                        onChange={(e) => {
-                          const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "");
-                          setUrlPrefix(clean);
-                        }}
-                        placeholder="e.g. eid, offer, deal, summer"
-                        className="w-full px-3 py-2 text-xs font-mono font-bold text-blue-700 border border-slate-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      />
+                  </details>
+
+                  <div className="flex items-center gap-3 overflow-hidden rounded-xl bg-slate-900 px-4 py-3.5 text-white">
+                    <Link2 className="h-4 w-4 shrink-0 text-indigo-300" aria-hidden="true" />
+                    <span className="shrink-0 text-xs text-slate-400">Example</span>
+                    <span className="truncate font-mono text-sm font-semibold text-indigo-200">{sampleTrackingUrl}</span>
+                  </div>
+                </div>
+
+                <FooterBar>
+                  <BackBtn to={2} />
+                  <button type="button" onClick={() => setStep(4)} disabled={!canNext3} className={btnPrimary}>
+                    Review <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </FooterBar>
+              </Panel>
+            </motion.div>
+          )}
+
+          {/* ------------------------------------------------ step 4 */}
+          {step === 4 && (
+            <motion.div key="s4" {...slide} className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+              <Panel title="Ready to send?" description="Check everything one last time">
+                <dl className="divide-y divide-slate-100 text-sm dark:divide-white/10">
+                  {[
+                    ["Campaign", name],
+                    ["Sender ID", senderId],
+                    ["Audience", audienceLabel],
+                    ["Message length", `${smsStats.characters} characters, ${smsStats.segments} SMS`],
+                    ["Sent through", "ZendSMS"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                      <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+                      <dd className="text-right font-semibold text-slate-900 dark:text-white">{v}</dd>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                      <span className="text-[11px] text-slate-500">Quick presets:</span>
-                      {["eid", "offer", "deal", "promo", "vip", "sale", "t"].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setUrlPrefix(preset)}
-                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all cursor-pointer ${
-                            activePrefix === preset
-                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
-                          }`}
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
+                  ))}
+                  <div className="py-3">
+                    <dt className="text-slate-500 dark:text-slate-400">Link opens</dt>
+                    <dd className="mt-1 break-all font-mono text-[13px] font-medium text-indigo-600 dark:text-indigo-300">{destinationUrl}</dd>
+                  </div>
+                </dl>
+
+                {launchError && (
+                  <div className="mt-2">
+                    <Notice type="error" onClose={() => setLaunchError(null)}>
+                      {launchError}
+                    </Notice>
                   </div>
                 )}
+
+                <FooterBar>
+                  <BackBtn to={3} />
+                  <button type="button" onClick={handleLaunchCampaign} disabled={isSubmitting} className={btnPrimary}>
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                    {isSubmitting ? "Creating links…" : "Create links and send"}
+                  </button>
+                </FooterBar>
+              </Panel>
+
+              <div>
+                <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">What they will see</p>
+                <SmsPreview sender={senderId} text={sampleMessage} />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tracking ID Format</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTrackingFormat("alphanumeric")}
-                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                        trackingFormat === "alphanumeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs ring-2 ring-blue-500/20"
-                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      Alphanumeric (e.g. {"a8k72p9m".slice(0, trackingLength)})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTrackingFormat("numeric")}
-                      className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
-                        trackingFormat === "numeric"
-                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs ring-2 ring-blue-500/20"
-                          : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      Numeric (e.g. {"58321497".slice(0, trackingLength)})
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-700">
-                      Character Length: <span className="text-blue-600 font-bold font-mono">{trackingLength} chars</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {trackingFormat === "alphanumeric"
-                        ? trackingLength === 3
-                          ? "~29.7K combinations"
-                          : trackingLength === 4
-                          ? "~14.7M combinations"
-                          : trackingLength === 5
-                          ? "~916M combinations"
-                          : trackingLength === 6
-                          ? "~56.8B combinations"
-                          : trackingLength === 7
-                          ? "~3.5 Trillion"
-                          : "~218 Trillion"
-                        : `${Math.pow(10, trackingLength).toLocaleString()} combinations`}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 mb-2">
-                    {[3, 4, 5, 6, 7, 8].map((len) => (
-                      <button
-                        key={len}
-                        type="button"
-                        onClick={() => setTrackingLength(len)}
-                        className={`flex-1 py-1 text-xs font-semibold rounded-md border transition-all cursor-pointer ${
-                          trackingLength === len
-                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        {len}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="range"
-                    min="3"
-                    max="8"
-                    value={trackingLength}
-                    onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
-                    className="w-full accent-blue-600 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Sample Generated Link Preview */}
-              <div className="p-3 bg-slate-900 text-white rounded-xl text-xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Link2 className="w-4 h-4 text-blue-400" />
-                  <span>Sample URL:</span>
-                  <span className="font-mono text-blue-300 font-bold">{sampleTrackingUrl}</span>
-                </div>
-                <Badge variant="success" className="bg-emerald-500/20 text-emerald-300 border-0">
-                  Collision-Proof
-                </Badge>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-between">
-              <Button variant="secondary" onClick={() => setStep(2)}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
-              <Button onClick={() => setStep(4)} disabled={!destinationUrl}>
-                Next: Review & Send <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-
-        {/* Step 4: Review & Send */}
-        {step === 4 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Step 4: Review & Launch Campaign</CardTitle>
-                <CardDescription>Confirm your SMS campaign details before queuing</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div>
-                    <span className="text-slate-400 block">Campaign Name:</span>
-                    <strong className="text-slate-900 text-sm">{name}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Sender ID:</span>
-                    <strong className="text-slate-900 text-sm">{senderId}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Audience / Contacts:</span>
-                    <strong className="text-slate-900 text-sm">{formatNumber(recipientCount)} Recipients</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Gateway Provider:</span>
-                    <strong className="text-blue-700 text-sm">ZendSMS (Live API)</strong>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <span className="font-semibold text-slate-700">Destination URL:</span>
-                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-blue-600 font-mono text-xs">
-                    {destinationUrl}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <span className="font-semibold text-slate-700">Sample Personalized Message:</span>
-                  <div className="p-3 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs leading-relaxed shadow-inner">
-                    {sampleMessage}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="justify-between">
-                <Button variant="secondary" onClick={() => setStep(3)}>
-                  <ArrowLeft className="w-4 h-4 mr-1" /> Back
-                </Button>
-                <Button onClick={handleLaunchCampaign} isLoading={isSubmitting} variant="primary" className="gap-2">
-                  <Send className="w-4 h-4" />
-                  <span>Generate Links & Send SMS</span>
-                </Button>
-              </CardFooter>
-            </Card>
-
-            {/* Mobile SMS Preview */}
-            <div className="bg-slate-900 p-4 rounded-2xl border-4 border-slate-700 shadow-xl text-white flex flex-col justify-between max-w-xs mx-auto w-full">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-[11px] text-slate-400">
-                <span>{senderId}</span>
-                <span>Now</span>
-              </div>
-              <div className="my-6 p-3 bg-blue-600 rounded-2xl rounded-tl-xs text-xs text-white leading-relaxed shadow-sm font-sans">
-                {sampleMessage}
-              </div>
-              <div className="text-center text-[10px] text-slate-500">Live SMS Simulation Preview</div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AppLayout>
   );

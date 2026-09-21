@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -18,26 +19,44 @@ import {
   Target,
   FileText,
   Settings,
-  Zap,
   ShieldAlert,
-  UserCheck,
   ShieldCheck,
   X,
-  Coins,
+  type LucideIcon,
 } from "lucide-react";
 
-export const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Campaigns", href: "/campaigns", icon: Send },
-  { label: "Create Campaign", href: "/campaigns/new", icon: PlusCircle, badge: "New" },
-  { label: "Link Generator", href: "/link-generator", icon: Link2 },
-  { label: "Delivery Queue", href: "/delivery-queue", icon: ListOrdered },
-  { label: "Click Analytics", href: "/click-analytics", icon: BarChart3 },
-  { label: "Active Leads", href: "/active-leads", icon: Users, badge: "AI" },
-  { label: "Audience Segments", href: "/audiences", icon: Target },
-  { label: "Reports", href: "/reports", icon: FileText },
-  { label: "My Profile", href: "/profile", icon: UserCheck },
-  { label: "Settings", href: "/settings", icon: Settings },
+interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+/** Grouped so the list reads as a few short sections instead of eleven equal rows. */
+const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
+  { label: null, items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }] },
+  {
+    label: "Send",
+    items: [
+      { label: "Campaigns", href: "/campaigns", icon: Send },
+      { label: "Tracking Links", href: "/link-generator", icon: Link2 },
+      { label: "Delivery Queue", href: "/delivery-queue", icon: ListOrdered },
+    ],
+  },
+  {
+    label: "Results",
+    items: [
+      { label: "Click Analytics", href: "/click-analytics", icon: BarChart3 },
+      { label: "Active Leads", href: "/active-leads", icon: Users },
+      { label: "Reports", href: "/reports", icon: FileText },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { label: "Audiences", href: "/audiences", icon: Target },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -58,157 +77,126 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         .join("")
         .toUpperCase()
         .slice(0, 2)
-    : "US";
+    : "U";
+
+  const isActive = (href: string) => pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
   return (
     <aside
       className={cn(
-        "fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col flex-shrink-0 min-h-screen transition-transform duration-300 ease-in-out md:translate-x-0 shadow-lg md:shadow-none",
+        "fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 ease-in-out dark:border-white/10 dark:bg-slate-900 md:static md:min-h-screen md:translate-x-0 md:shadow-none",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      {/* Brand Header */}
-      <div className="h-16 px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      {/* Brand */}
+      <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5 dark:border-white/10">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
-          <LogoMark size={36} />
-          <div>
-            <div className="font-display font-extrabold text-base tracking-tight text-slate-900 dark:text-slate-100">
-              {BRAND.name}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium">{BRAND.tagline}</div>
-          </div>
+          <LogoMark size={34} />
+          <div className="font-display text-base font-extrabold tracking-tight text-slate-900 dark:text-white">{BRAND.name}</div>
         </Link>
-
-        {/* Mobile Close Button */}
         <button
           onClick={onClose}
-          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/10 dark:hover:text-slate-200 md:hidden"
           aria-label="Close navigation"
         >
-          <X className="w-5 h-5" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Navigation Links */}
-      <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          Main Navigation
-        </div>
+      {/* Primary action */}
+      <div className="px-4 pt-4">
+        <Link
+          href="/campaigns/new"
+          onClick={onClose}
+          className="group relative flex h-11 items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-sm font-semibold text-white shadow-md shadow-indigo-600/30 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+        >
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent motion-safe:animate-shimmer" />
+          <PlusCircle className="relative h-4 w-4" aria-hidden="true" />
+          <span className="relative">New campaign</span>
+        </Link>
+      </div>
 
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group",
-                isActive
-                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={cn(
-                    "w-4 h-4 transition-colors",
-                    isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
-                  )}
-                />
-                <span>{item.label}</span>
-              </div>
-              {item.badge && (
-                <span
-                  className={cn(
-                    "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                    item.badge === "AI"
-                      ? "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50"
-                      : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50"
-                  )}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+      {/* Navigation */}
+      <nav aria-label="Main" className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={gi}>
+            {group.label && (
+              <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{group.label}</p>
+            )}
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = isActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={onClose}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                        active ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-100"
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="sidebar-active"
+                          className="absolute inset-0 rounded-xl bg-indigo-50 dark:bg-indigo-500/15"
+                          transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                        />
+                      )}
+                      {active && <span aria-hidden="true" className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-gradient-to-b from-indigo-500 to-cyan-400" />}
+                      <Icon className={cn("relative h-[18px] w-[18px]", active ? "text-indigo-600 dark:text-indigo-300" : "text-slate-400")} aria-hidden="true" />
+                      <span className="relative">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
 
         {isSuperAdmin && (
-          <div className="pt-3">
-            <div className="px-3 pb-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Administration
-            </div>
+          <div>
+            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Admin</p>
             <Link
               href="/admin"
               onClick={onClose}
               className={cn(
-                "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-all group",
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors",
                 pathname.startsWith("/admin")
                   ? "bg-amber-500 text-white shadow-sm"
-                  : "text-amber-900 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:bg-amber-100/80 dark:hover:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/50"
+                  : "border border-amber-200/70 bg-amber-50/70 text-amber-900 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
               )}
             >
-              <div className="flex items-center gap-3">
-                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Super Admin</span>
-              </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-                MASTER
-              </span>
+              <ShieldAlert className="h-[18px] w-[18px]" aria-hidden="true" />
+              Super Admin
             </Link>
           </div>
         )}
-      </div>
+      </nav>
 
-      {/* Live Balance Summary Bar */}
-      <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-medium">
-          <Coins className="w-3.5 h-3.5 text-amber-500" />
-          <span>Credits:</span>
-        </div>
-        <span
-          className={cn(
-            "font-bold px-2 py-0.5 rounded text-xs",
-            (user?.smsCredits ?? 0) <= 0
-              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/60"
-              : (user?.smsCredits ?? 0) < 10
-              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60"
-              : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60"
-          )}
-        >
-          {user?.smsCredits ?? 0}
-        </span>
-      </div>
-
-      {/* User Profile Footer */}
+      {/* Account */}
       <Link
         href="/profile"
         onClick={onClose}
-        className="p-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+        className="group flex items-center justify-between border-t border-slate-100 p-3 transition-colors hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
       >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-slate-900 dark:bg-slate-700 text-white flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-xs font-bold text-white transition-transform group-hover:scale-105">
             {userInitials}
-          </div>
-          <div className="text-left">
-            <div className="text-xs font-semibold text-slate-900 dark:text-white leading-none truncate max-w-[110px]">
-              {user?.name || "My Account"}
-            </div>
-            <div className="text-[11px] text-slate-400 mt-0.5 capitalize flex items-center gap-1">
-              <span>{user?.platformRole === "superadmin" ? "SuperAdmin" : "Workspace Owner"}</span>
-            </div>
+          </span>
+          <div className="min-w-0 text-left leading-tight">
+            <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user?.name || "My account"}</div>
+            <div className="text-xs text-slate-400">{isSuperAdmin ? "Super admin" : "Profile"}</div>
           </div>
         </div>
         {user?.isPhoneVerified ? (
-          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-        ) : (
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" title="Phone Unverified" />
-        )}
+          <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" aria-label="Phone verified" />
+        ) : user ? (
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" title="Phone not verified" />
+        ) : null}
       </Link>
     </aside>
   );
 }
-

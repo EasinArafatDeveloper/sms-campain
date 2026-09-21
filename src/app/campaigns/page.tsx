@@ -4,29 +4,34 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
-import {
-  PlusCircle,
-  Search,
-  Filter,
-  BarChart3,
-  Download,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  X,
-  FileSpreadsheet,
-  Eye,
-} from "lucide-react";
-import { formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 import { TablePageSkeleton } from "@/components/ui/Skeleton";
+import {
+  ConfirmDelete,
+  EmptyState,
+  Notice,
+  PageHeader,
+  Panel,
+  SearchBox,
+  SelectBox,
+  Toolbar,
+  btnPrimary,
+  btnSecondary,
+  iconBtn,
+  tbl,
+} from "@/components/ui/page";
+import { BarChart3, Download, FileSpreadsheet, Send, PlusCircle, Trash2 } from "lucide-react";
+import { formatNumber, formatDate } from "@/lib/utils";
 
 export default function CampaignsListPage() {
   return (
-    <Suspense fallback={<AppLayout><TablePageSkeleton titleWidth="w-72" rowCount={6} /></AppLayout>}>
+    <Suspense
+      fallback={
+        <AppLayout>
+          <TablePageSkeleton titleWidth="w-72" rowCount={6} />
+        </AppLayout>
+      }
+    >
       <CampaignsListContent />
     </Suspense>
   );
@@ -40,15 +45,12 @@ function CampaignsListContent() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync search when query param changes
+  // Sync search when the header search sends us here with ?search=
   useEffect(() => {
     const q = searchParams.get("search");
-    if (q !== null) {
-      setSearch(q);
-    }
+    if (q !== null) setSearch(q);
   }, [searchParams]);
 
-  // Deletion state
   const [campaignToDelete, setCampaignToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -67,33 +69,22 @@ function CampaignsListContent() {
 
   useEffect(() => {
     loadCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter]);
 
   async function handleDeleteConfirm() {
     if (!campaignToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/campaigns/${campaignToDelete._id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/campaigns/${campaignToDelete._id}`, { method: "DELETE" });
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to delete campaign");
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to delete campaign");
 
       setCampaigns((prev) => prev.filter((c) => c._id !== campaignToDelete._id));
-      setNotification({
-        type: "success",
-        message: `Campaign "${campaignToDelete.name}" and all associated queue jobs, tracking links, and click logs have been permanently deleted from database.`,
-      });
+      setNotification({ type: "success", message: `“${campaignToDelete.name}” was deleted.` });
       setCampaignToDelete(null);
     } catch (err: any) {
-      console.error("Delete error:", err);
-      setNotification({
-        type: "error",
-        message: err.message || "Failed to delete campaign",
-      });
+      setNotification({ type: "error", message: err.message || "Failed to delete campaign" });
     } finally {
       setIsDeleting(false);
     }
@@ -107,256 +98,138 @@ function CampaignsListContent() {
     );
   }
 
+  const filtered = search !== "" || statusFilter !== "all";
+
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Notification Banner */}
         {notification && (
-          <div
-            className={`p-4 rounded-xl text-xs flex items-center justify-between transition-all ${
-              notification.type === "success"
-                ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-                : "bg-red-50 border border-red-200 text-red-800"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {notification.type === "success" ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-              )}
-              <span className="font-medium">{notification.message}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setNotification(null)}
-              className="text-slate-400 hover:text-slate-700 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          <Notice type={notification.type} onClose={() => setNotification(null)}>
+            {notification.message}
+          </Notice>
         )}
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">SMS Marketing Campaigns</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Manage broadcast campaigns, export full detailed delivery reports, and clean up database records.
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <a href="/api/exports/campaigns" download>
-              <Button variant="outline" size="md" className="gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Export All CSV</span>
-              </Button>
-            </a>
-            <Link href="/campaigns/new">
-              <Button variant="primary" size="md" className="gap-2">
-                <PlusCircle className="w-4 h-4" />
-                <span>Create Campaign</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title="Campaigns"
+          subtitle="Everything you have sent or saved, with how it performed."
+          actions={
+            <>
+              <a href="/api/exports/campaigns" download className={btnSecondary}>
+                <FileSpreadsheet className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                Export CSV
+              </a>
+              <Link href="/campaigns/new" className={btnPrimary}>
+                <PlusCircle className="h-4 w-4" aria-hidden="true" />
+                New campaign
+              </Link>
+            </>
+          }
+        />
 
-        {/* Filters and Search */}
-        <Card className="p-4">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search campaigns by name or sender..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Statuses</option>
-                <option value="completed">Completed</option>
-                <option value="sending">Sending</option>
-                <option value="queued">Queued</option>
-                <option value="draft">Draft</option>
-              </select>
-            </div>
-          </div>
-        </Card>
+        <Toolbar>
+          <SearchBox value={search} onChange={setSearch} placeholder="Search by name or sender" />
+          <SelectBox value={statusFilter} onChange={setStatusFilter} label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="sending">Sending</option>
+            <option value="queued">Queued</option>
+            <option value="draft">Draft</option>
+          </SelectBox>
+        </Toolbar>
 
-        {/* Campaigns Table */}
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
-                <tr>
-                  <th className="px-6 py-3.5">Campaign Name</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5">Recipients</th>
-                  <th className="px-4 py-3.5">Delivered</th>
-                  <th className="px-4 py-3.5">Clicks</th>
-                  <th className="px-4 py-3.5">Unique Clickers</th>
-                  <th className="px-4 py-3.5">Click Rate</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {campaigns.length === 0 ? (
+        <Panel flush>
+          {campaigns.length === 0 ? (
+            <EmptyState
+              icon={Send}
+              title={filtered ? "No campaigns match" : "No campaigns yet"}
+              body={filtered ? "Try a different search or status." : "Create your first campaign and see who clicks."}
+              action={
+                !filtered && (
+                  <Link href="/campaigns/new" className={btnPrimary}>
+                    <PlusCircle className="h-4 w-4" aria-hidden="true" />
+                    New campaign
+                  </Link>
+                )
+              }
+            />
+          ) : (
+            <div className={tbl.wrap}>
+              <table className={tbl.table}>
+                <thead className={tbl.head}>
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
-                      No campaigns found. Click <strong>Create Campaign</strong> to get started.
-                    </td>
+                    <th className={tbl.th}>Campaign</th>
+                    <th className={tbl.th}>Status</th>
+                    <th className={`${tbl.th} text-right`}>Recipients</th>
+                    <th className={`${tbl.th} hidden text-right lg:table-cell`}>Delivered</th>
+                    <th className={`${tbl.th} text-right`}>Clicks</th>
+                    <th className={`${tbl.th} text-right`}>Click rate</th>
+                    <th className={`${tbl.th} text-right`}>
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
-                ) : (
-                  campaigns.map((camp) => {
+                </thead>
+                <tbody className={tbl.body}>
+                  {campaigns.map((camp) => {
                     const stats = camp.statistics || {};
                     const sent = camp.recipientCount || stats.sent || 0;
                     const delivered = stats.delivered || 0;
-                    const totalClicks = stats.totalClicks || 0;
-                    const uniqueClickers = stats.uniqueClickers || 0;
-                    const ctr = delivered > 0 ? (uniqueClickers / delivered) * 100 : 0;
+                    const ctr = delivered > 0 ? ((stats.uniqueClickers || 0) / delivered) * 100 : 0;
                     return (
-                      <tr key={camp._id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-900">
-                          <Link href={`/campaigns/${camp._id}`} className="text-sm font-semibold hover:text-blue-600 transition-colors flex items-center gap-1.5 group">
-                            <span>{camp.name}</span>
-                            <Eye className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                      <tr key={camp._id} className={`group ${tbl.row}`}>
+                        <td className={tbl.td}>
+                          <Link href={`/campaigns/${camp._id}`} className="block focus-visible:outline-none">
+                            <span className="font-semibold text-slate-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-300">{camp.name}</span>
+                            <span className="mt-0.5 block text-xs text-slate-400">
+                              {camp.senderId} · {formatDate(camp.createdAt)}
+                            </span>
                           </Link>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            Sender: <span className="font-mono text-slate-600">{camp.senderId}</span> • Created {formatDate(camp.createdAt)}
-                          </div>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className={tbl.td}>
                           <StatusBadge status={camp.status} />
                         </td>
-                        <td className="px-4 py-4 font-medium">{formatNumber(sent)}</td>
-                        <td className="px-4 py-4 text-emerald-700 font-medium">
-                          {formatNumber(delivered)}
+                        <td className={`${tbl.td} text-right font-medium tabular-nums`}>{formatNumber(sent)}</td>
+                        <td className={`${tbl.td} hidden text-right tabular-nums lg:table-cell`}>{formatNumber(delivered)}</td>
+                        <td className={`${tbl.td} text-right font-semibold tabular-nums text-indigo-700 dark:text-indigo-300`}>{formatNumber(stats.totalClicks || 0)}</td>
+                        <td className={tbl.td}>
+                          <div className="ml-auto flex w-24 items-center justify-end gap-2">
+                            <span className="text-xs font-semibold tabular-nums">{ctr.toFixed(1)}%</span>
+                            <span className="h-1.5 w-10 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                              <span className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${Math.min(100, ctr * 3)}%` }} />
+                            </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-4 font-semibold text-purple-700">
-                          {formatNumber(totalClicks)}
-                        </td>
-                        <td className="px-4 py-4">{formatNumber(uniqueClickers)}</td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">
-                            {formatPercentage(ctr)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Link href={`/campaigns/${camp._id}`}>
-                              <Button variant="primary" size="sm" className="gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-2xs" title="View Full Campaign Live Report & Numbers">
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Report</span>
-                              </Button>
+                        <td className={tbl.td}>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Link href={`/click-analytics?campaignId=${camp._id}`} className={iconBtn} aria-label={`Click analytics for ${camp.name}`} title="Click analytics">
+                              <BarChart3 className="h-4 w-4" />
                             </Link>
-                            <Link href={`/click-analytics?campaignId=${camp._id}`}>
-                              <Button variant="outline" size="sm" className="gap-1 text-xs" title="View Click Analytics">
-                                <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-                                <span className="hidden lg:inline">Analytics</span>
-                              </Button>
-                            </Link>
-                            <a
-                              href={`/api/exports/campaigns/${camp._id}`}
-                              download
-                              title="Download Full Campaign CSV Report"
-                            >
-                              <Button variant="secondary" size="sm" className="gap-1 text-xs text-emerald-700 hover:text-emerald-800">
-                                <Download className="w-3.5 h-3.5" />
-                                <span className="hidden lg:inline">CSV</span>
-                              </Button>
+                            <a href={`/api/exports/campaigns/${camp._id}`} download className={iconBtn} aria-label={`Download CSV for ${camp.name}`} title="Download CSV">
+                              <Download className="h-4 w-4" />
                             </a>
-                            <Button
-                              variant="outline"
-                              size="sm"
+                            <button
+                              type="button"
                               onClick={() => setCampaignToDelete(camp)}
-                              className="text-xs text-red-600 hover:bg-red-50 hover:border-red-300 border-slate-200"
-                              title="Delete Campaign and Cascade DB Cleanup"
+                              className={`${iconBtn} hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10`}
+                              aria-label={`Delete ${camp.name}`}
+                              title="Delete"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
       </div>
 
-      {/* Cascade Delete Confirmation Modal */}
       {campaignToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900">Delete Campaign Permanently?</h3>
-                <p className="text-xs text-slate-500">
-                  Are you sure you want to delete <strong className="text-slate-800 font-semibold">{campaignToDelete.name}</strong>?
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3 bg-red-50/70 border border-red-200/60 rounded-xl text-xs text-red-700 space-y-1.5">
-              <div className="font-semibold flex items-center gap-1.5">
-                <span>Database Cleanup Cascade Notice:</span>
-              </div>
-              <ul className="list-disc pl-4 space-y-1 text-[11px] text-red-600/90">
-                <li>Campaign details and statistics</li>
-                <li>All recipient records & queue delivery jobs ({campaignToDelete.recipientCount || 0} contacts)</li>
-                <li>Generated unique tracking links</li>
-                <li>Historical click logs & engagement attribution events</li>
-              </ul>
-              <p className="text-[11px] font-medium pt-1 text-red-800">
-                This action cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => setCampaignToDelete(null)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                size="md"
-                onClick={handleDeleteConfirm}
-                disabled={isDeleting}
-                className="gap-2 bg-red-600 hover:bg-red-700 text-white"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Deleting from DB...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4" />
-                    <span>Yes, Delete Campaign</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDelete name={campaignToDelete.name} loading={isDeleting} onCancel={() => setCampaignToDelete(null)} onConfirm={handleDeleteConfirm} />
       )}
     </AppLayout>
   );
 }
-

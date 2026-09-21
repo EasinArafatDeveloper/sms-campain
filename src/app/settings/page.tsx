@@ -2,52 +2,46 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import {
-  Settings as SettingsIcon,
-  ShieldCheck,
-  Server,
-  Users,
-  Send,
-  CheckCircle2,
-  AlertCircle,
-  Key,
-  Globe,
-  RotateCw,
-  RefreshCw,
-  Sparkles,
-} from "lucide-react";
-import { formatNumber } from "@/lib/utils";
+import { EmptyState, Notice, PageHeader, Panel, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
+import { TextField } from "@/components/auth/fields";
+import { Coins, Globe, Loader2, RefreshCw, Send, Server, Sparkles, Users } from "lucide-react";
+import { formatNumber, cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"general" | "gateway" | "team">("gateway");
+type Tab = "gateway" | "general" | "team";
 
-  // State
+const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "gateway", label: "SMS sending", icon: Server },
+  { id: "general", label: "Workspace", icon: Globe },
+  { id: "team", label: "Team", icon: Users },
+];
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("gateway");
+
   const [orgName, setOrgName] = useState("My Workspace");
   const [defaultSenderId, setDefaultSenderId] = useState("8809612781020");
   const [trackingDomain, setTrackingDomain] = useState("https://sms-campain.vercel.app");
   const [trackingLength, setTrackingLength] = useState(6);
-  const [smsCredits, setSmsCredits] = useState<number>(20);
+  const [smsCredits, setSmsCredits] = useState<number>(0);
 
-  // SMS Gateway Config (ZendSMS)
+  // ZendSMS gateway
   const [apiKey, setApiKey] = useState("");
   const [senderId, setSenderId] = useState("8809612781020");
   const [apiUrl, setApiUrl] = useState("https://api.zendsms.com/api/v1/send-sms");
   const [balance, setBalance] = useState<number | null>(null);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
-  // Test SMS State
+  // Test SMS
   const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState(`Test SMS verification from ${BRAND.name}.`);
+  const [testMessage, setTestMessage] = useState(`Test SMS from ${BRAND.name}.`);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
 
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-
+  const [teamMembers, setTeamMembers] = useState<any[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -60,26 +54,19 @@ export default function SettingsPage() {
           setOrgName(data.organization.name || "My Workspace");
           setDefaultSenderId(data.organization.defaultSenderId || "8809612781020");
           setTrackingDomain(data.organization.trackingDomain || "https://sms-campain.vercel.app");
-          if (data.organization.settings?.defaultTrackingLength) {
-            setTrackingLength(data.organization.settings.defaultTrackingLength);
-          }
+          if (data.organization.settings?.defaultTrackingLength) setTrackingLength(data.organization.settings.defaultTrackingLength);
         }
-        if (typeof data.smsCredits !== "undefined") {
-          setSmsCredits(data.smsCredits);
-        }
+        if (typeof data.smsCredits !== "undefined") setSmsCredits(data.smsCredits);
         if (data.providerConfig) {
           setApiKey(data.providerConfig.apiKey || "");
           setSenderId(data.providerConfig.senderId || "8809612781020");
           setApiUrl(data.providerConfig.apiUrl || "https://api.zendsms.com/api/v1/send-sms");
         }
-        if (typeof data.balance !== "undefined") {
-          setBalance(data.balance);
-        }
-        if (Array.isArray(data.teamMembers)) {
-          setTeamMembers(data.teamMembers);
-        }
+        if (typeof data.balance !== "undefined") setBalance(data.balance);
+        setTeamMembers(Array.isArray(data.teamMembers) ? data.teamMembers : []);
       } catch (err) {
         console.error(err);
+        setTeamMembers([]);
       }
     }
     loadSettings();
@@ -98,23 +85,11 @@ export default function SettingsPage() {
             name: orgName,
             defaultSenderId,
             trackingDomain,
-            settings: {
-              defaultTrackingLength: trackingLength,
-              defaultTrackingFormat: "numeric",
-              retentionDays: 90,
-              enableWebhooks: true,
-            },
+            settings: { defaultTrackingLength: trackingLength, defaultTrackingFormat: "numeric", retentionDays: 90, enableWebhooks: true },
           },
-          providerConfig: {
-            provider: "zendsms",
-            name: "ZendSMS Primary",
-            apiKey,
-            senderId,
-            apiUrl,
-          },
+          providerConfig: { provider: "zendsms", name: "ZendSMS Primary", apiKey, senderId, apiUrl },
         }),
       });
-
       if (res.ok) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
@@ -133,357 +108,232 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings/test-sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: testPhone,
-          message: testMessage,
-          senderId,
-        }),
+        body: JSON.stringify({ phone: testPhone, message: testMessage, senderId }),
       });
-      const json = await res.json();
-      setTestResult(json);
+      setTestResult(await res.json());
     } catch (err: any) {
-      setTestResult({ error: err.message || "Failed to dispatch test SMS" });
+      setTestResult({ error: err.message || "Failed to send the test SMS" });
     } finally {
       setIsSendingTest(false);
     }
   };
 
+  const refreshBalance = async () => {
+    setIsCheckingBalance(true);
+    try {
+      const json = await (await fetch("/api/settings")).json();
+      if (typeof json.balance !== "undefined") setBalance(json.balance);
+      if (typeof json.smsCredits !== "undefined") setSmsCredits(json.smsCredits);
+    } finally {
+      setIsCheckingBalance(false);
+    }
+  };
+
+  const SaveButton = ({ label }: { label: string }) => (
+    <button type="submit" disabled={isSaving} className={btnPrimary}>
+      {isSaving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+      {label}
+    </button>
+  );
+
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Organization Settings</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Configure SMS Gateway credentials, custom tracking domain, and team members.
-            </p>
-          </div>
-          {saveSuccess && (
-            <Badge variant="success" className="px-3 py-1">
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-              Settings Saved Successfully
-            </Badge>
-          )}
-        </div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader title="Settings" subtitle="How your messages are sent, your workspace and your team." />
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-slate-200">
-          {[
-            { id: "gateway", label: "SMS Gateway (ZendSMS)", icon: Server },
-            { id: "general", label: "Organization & Tracking", icon: Globe },
-            { id: "team", label: "Team Members & RBAC", icon: Users },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+        {saveSuccess && <Notice type="success">Settings saved.</Notice>}
+
+        {/* tabs */}
+        <div role="tablist" aria-label="Settings sections" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-slate-900">
+          {TABS.map((t) => {
+            const active = activeTab === t.id;
+            const Icon = t.icon;
             return (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  isActive
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-900"
-                }`}
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveTab(t.id)}
+                className={cn(
+                  "relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                  active ? "text-white" : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                )}
               >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                {active && <motion.span layoutId="settings-tab" className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 shadow-md shadow-indigo-600/25" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+                <Icon className="relative h-4 w-4" />
+                <span className="relative">{t.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Tab 1: SMS Gateway (ZendSMS) */}
+        {/* ---------------- SMS sending ---------------- */}
         {activeTab === "gateway" && (
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 p-6 text-white shadow-lg shadow-indigo-600/20">
+              <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle>ZendSMS Gateway Credentials</CardTitle>
-                  <CardDescription>
-                    Official ZendSMS API (app.zendsms.com) for high-deliverability Bangladesh messaging
-                  </CardDescription>
+                  <p className="flex items-center gap-2 text-sm font-medium text-indigo-100">
+                    <Coins className="h-4 w-4" aria-hidden="true" />
+                    {balance !== null ? "ZendSMS balance" : "SMS credits"}
+                  </p>
+                  <p className="mt-1 font-display text-4xl font-extrabold tabular-nums">
+                    {balance !== null ? `৳${formatNumber(balance)}` : formatNumber(smsCredits)}
+                  </p>
+                  <p className="mt-1 text-xs text-indigo-100">
+                    {balance !== null ? "Connected with your own ZendSMS account." : `Sent through the ${BRAND.name} gateway. 1 credit = 1 SMS.`}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-emerald-700">ZendSMS Active</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {smsCredits === 0 && balance === null && (
+                    <Link href="/profile" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-semibold text-indigo-700 shadow-md transition-transform hover:-translate-y-0.5 active:scale-[0.97]">
+                      <Sparkles className="h-4 w-4" aria-hidden="true" />
+                      Get 50 free credits
+                    </Link>
+                  )}
+                  <button type="button" onClick={refreshBalance} disabled={isCheckingBalance} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-60">
+                    <RefreshCw className={cn("h-4 w-4", isCheckingBalance && "animate-spin")} aria-hidden="true" />
+                    Refresh
+                  </button>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs">
-                {/* Account Balance / Credits Display */}
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 rounded-xl border border-blue-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
-                      {balance !== null ? "Custom ZendSMS API Balance" : "Workspace SMS Credits"}
-                    </span>
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 flex items-baseline gap-1.5">
-                      {balance !== null ? (
-                        <>
-                          <span>৳{formatNumber(balance)}</span>
-                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">BDT</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{formatNumber(smsCredits)}</span>
-                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">Credits Available</span>
-                        </>
-                      )}
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveSettings}>
+              <Panel title="Sender" description="The name or number your recipients see">
+                <div className="space-y-5">
+                  <TextField label="Approved sender ID" value={senderId} onChange={(e) => setSenderId(e.target.value)} placeholder="8809612781020" className="font-mono" />
+
+                  <details className="group rounded-xl border border-slate-200 dark:border-white/10">
+                    <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      Use my own ZendSMS account
+                      <span className="text-xs font-medium text-slate-400 group-open:hidden">Optional</span>
+                      <span className="hidden text-xs font-medium text-slate-400 group-open:inline">Hide</span>
+                    </summary>
+                    <div className="space-y-4 border-t border-slate-200 p-4 dark:border-white/10">
+                      <TextField label="ZendSMS API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Leave empty to use the shared gateway" className="font-mono" hint={`Empty means ${BRAND.name} sends for you and uses your credits.`} />
+                      <TextField label="API endpoint" type="url" value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} className="font-mono" />
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      {balance !== null
-                        ? "Connected via custom ZendSMS API credentials."
-                        : `Managed via the ${BRAND.name} shared gateway (1 Credit = 1 SMS).`}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {smsCredits === 0 && balance === null && (
-                      <Link href="/profile">
-                        <Button variant="primary" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Claim 50 Free SMS</span>
-                        </Button>
-                      </Link>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        setIsCheckingBalance(true);
-                        try {
-                          const res = await fetch("/api/settings");
-                          const json = await res.json();
-                          if (typeof json.balance !== "undefined") setBalance(json.balance);
-                          if (typeof json.smsCredits !== "undefined") setSmsCredits(json.smsCredits);
-                        } finally {
-                          setIsCheckingBalance(false);
-                        }
-                      }}
-                      isLoading={isCheckingBalance}
-                      className="gap-1.5 text-xs"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Refresh Balance</span>
-                    </Button>
-                  </div>
-                </div>
+                  </details>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Custom API Key (BYOK - Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk_ago... (Leave empty to use shared gateway)"
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
-                    />
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      Leave empty to use the {BRAND.name} shared gateway with your workspace credits.
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Approved Sender ID (CLI)</label>
-                    <input
-                      type="text"
-                      value={senderId}
-                      onChange={(e) => setSenderId(e.target.value)}
-                      placeholder="8809612781020"
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-slate-100"
-                    />
+                  <div className="flex justify-end">
+                    <SaveButton label="Save" />
                   </div>
                 </div>
+              </Panel>
+            </form>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Send SMS API Endpoint</label>
-                  <input
-                    type="url"
-                    value={apiUrl}
-                    onChange={(e) => setApiUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400"
-                  />
-                </div>
-              </CardContent>
-              <CardFooter className="justify-end">
-                <Button onClick={handleSaveSettings} isLoading={isSaving} variant="primary">
-                  Save Gateway Settings
-                </Button>
-              </CardFooter>
-            </Card>
+            <Panel title="Send a test SMS" description="Check that sending works before your first campaign">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField label="Phone number" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="88017XXXXXXXX" className="font-mono" inputMode="tel" />
+                <TextField label="Message" value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
+              </div>
 
-            {/* Test SMS Dispatcher */}
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Test SMS Dispatcher</CardTitle>
-                  <CardDescription>Send a real test SMS message via ZendSMS API to verify connection</CardDescription>
+              {testResult && (
+                <div className="mt-4">
+                  <Notice type={testResult.success ? "success" : "error"}>
+                    {testResult.success ? "Test message sent." : testResult.error || testResult.message || "The message could not be sent."}
+                  </Notice>
+                  <details className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    <summary className="cursor-pointer">Technical details</summary>
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-mono text-[11px] dark:bg-white/5">{JSON.stringify(testResult, null, 2)}</pre>
+                  </details>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Destination Phone Number</label>
-                    <input
-                      type="text"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
-                      placeholder="88017XXXXXXXX"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Message Body</label>
-                    <input
-                      type="text"
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs"
-                    />
-                  </div>
-                </div>
+              )}
 
-                {testResult && (
-                  <div
-                    className={`p-3 rounded-xl border text-xs font-mono ${
-                      testResult.success
-                        ? "bg-emerald-50 text-emerald-900 border-emerald-200"
-                        : "bg-rose-50 text-rose-900 border-rose-200"
-                    }`}
-                  >
-                    <div className="font-bold font-sans">
-                      {testResult.success ? "✓ Message Dispatched Successfully" : "✕ Dispatch Failed"}
-                    </div>
-                    <pre className="mt-1 text-[11px] overflow-x-auto whitespace-pre-wrap">
-                      {JSON.stringify(testResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="justify-end">
-                <Button onClick={handleSendTestSms} isLoading={isSendingTest} variant="primary" className="gap-2">
-                  <Send className="w-4 h-4" />
-                  <span>Send Test SMS</span>
-                </Button>
-              </CardFooter>
-            </Card>
+              <div className="mt-5 flex justify-end">
+                <button type="button" onClick={handleSendTestSms} disabled={isSendingTest || !testPhone} className={btnSecondary}>
+                  {isSendingTest ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                  Send test
+                </button>
+              </div>
+            </Panel>
           </div>
         )}
 
-        {/* Tab 2: General & Tracking */}
+        {/* ---------------- Workspace ---------------- */}
         {activeTab === "general" && (
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>General Organization & Tracking Config</CardTitle>
-                <CardDescription>Setup brand name, tracking domain, and short ID preferences</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Organization Name</label>
-                <input
-                  type="text"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Default Sender ID</label>
-                  <input
-                    type="text"
-                    value={defaultSenderId}
-                    onChange={(e) => setDefaultSenderId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
-                  />
+          <form onSubmit={handleSaveSettings}>
+            <Panel title="Workspace" description="Your brand name and how links look">
+              <div className="space-y-5">
+                <TextField label="Workspace name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <TextField label="Default sender ID" value={defaultSenderId} onChange={(e) => setDefaultSenderId(e.target.value)} className="font-mono" />
+                  <TextField label="Link domain" value={trackingDomain} onChange={(e) => setTrackingDomain(e.target.value)} className="font-mono" hint="Short links start with this address." />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Custom Tracking Domain</label>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label htmlFor="link-length" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      Short link length
+                    </label>
+                    <output htmlFor="link-length" className="rounded-lg bg-indigo-50 px-2.5 py-1 font-mono text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                      {trackingLength} characters
+                    </output>
+                  </div>
                   <input
-                    type="text"
-                    value={trackingDomain}
-                    onChange={(e) => setTrackingDomain(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono"
+                    id="link-length"
+                    type="range"
+                    min={3}
+                    max={8}
+                    value={trackingLength}
+                    onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
+                    style={{ "--p": `${((trackingLength - 3) / 5) * 100}%` } as React.CSSProperties}
+                    className="range-fancy w-full cursor-pointer"
                   />
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Shorter links leave more room in your SMS.</p>
+                </div>
+                <div className="flex justify-end">
+                  <SaveButton label="Save" />
                 </div>
               </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  Default Tracking ID Length: {trackingLength} chars
-                </label>
-                <input
-                  type="range"
-                  min="3"
-                  max="8"
-                  value={trackingLength}
-                  onChange={(e) => setTrackingLength(parseInt(e.target.value, 10))}
-                  className="w-full"
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end">
-              <Button onClick={handleSaveSettings} isLoading={isSaving} variant="primary">
-                Save General Settings
-              </Button>
-            </CardFooter>
-          </Card>
+            </Panel>
+          </form>
         )}
 
-        {/* Tab 3: Team Members & RBAC */}
+        {/* ---------------- Team ---------------- */}
         {activeTab === "team" && (
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Team Members & Permissions (RBAC)</CardTitle>
-                <CardDescription>Workspace user roles: Owner (Full Access) and Admin</CardDescription>
-              </div>
-            </CardHeader>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
-                  <tr>
-                    <th className="px-6 py-3.5">Name</th>
-                    <th className="px-4 py-3.5">Email</th>
-                    <th className="px-4 py-3.5">Phone</th>
-                    <th className="px-4 py-3.5">Role</th>
-                    <th className="px-4 py-3.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {teamMembers && teamMembers.length > 0 ? (
-                    teamMembers.map((m, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/60">
-                        <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{m.name}</td>
-                        <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{m.email}</td>
-                        <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{m.phone || "—"}</td>
-                        <td className="px-4 py-4">
-                          <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-semibold uppercase text-[10px]">
-                            {m.role || "Owner"}
-                          </span>
+          <Panel flush title="Team" description="People who can use this workspace">
+            {teamMembers === null ? (
+              <p className="px-6 py-10 text-center text-sm text-slate-400">Loading…</p>
+            ) : teamMembers.length === 0 ? (
+              <EmptyState icon={Users} title="Only you so far" />
+            ) : (
+              <div className={tbl.wrap}>
+                <table className={tbl.table}>
+                  <thead className={tbl.head}>
+                    <tr>
+                      <th className={tbl.th}>Name</th>
+                      <th className={`${tbl.th} hidden sm:table-cell`}>Email</th>
+                      <th className={tbl.th}>Role</th>
+                      <th className={`${tbl.th} text-right`}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className={tbl.body}>
+                    {teamMembers.map((m, idx) => (
+                      <tr key={idx} className={tbl.row}>
+                        <td className={tbl.td}>
+                          <span className="font-semibold text-slate-900 dark:text-white">{m.name}</span>
+                          <span className="block text-xs text-slate-400 sm:hidden">{m.email}</span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className={`${tbl.td} hidden text-slate-500 sm:table-cell`}>{m.email}</td>
+                        <td className={tbl.td}>
+                          <Badge variant="default" className="capitalize">
+                            {m.role || "Owner"}
+                          </Badge>
+                        </td>
+                        <td className={`${tbl.td} text-right`}>
                           <Badge variant="success" className="capitalize">
                             {m.status || "active"}
                           </Badge>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
-                        Loading workspace team members...
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
         )}
       </div>
     </AppLayout>
