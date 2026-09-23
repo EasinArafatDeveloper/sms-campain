@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, Notice, PageHeader, Panel, SelectBox, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
+import { ConfirmSend, EmptyState, Notice, PageHeader, Panel, SelectBox, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
 import { AlertTriangle, CheckCircle2, ListOrdered, Loader2, Play, RotateCw, Send, Server } from "lucide-react";
 import { formatNumber, formatDateTime } from "@/lib/utils";
 
@@ -23,7 +23,8 @@ export default function DeliveryQueuePage() {
   // point, since a campaign's messages only join the queue below once you send it.
   const [pendingCampaigns, setPendingCampaigns] = useState<any[]>([]);
   const [isLoadingPending, setIsLoadingPending] = useState(true);
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [campaignToSend, setCampaignToSend] = useState<any | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const [sendNotice, setSendNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchQueueData = async () => {
@@ -61,25 +62,23 @@ export default function DeliveryQueuePage() {
     fetchPendingCampaigns();
   }, []);
 
-  async function handleSendCampaign(camp: any) {
-    const ok = window.confirm(
-      `Send "${camp.name}" to ${formatNumber(camp.recipientCount || 0)} recipients now?\n\nThis cannot be undone.`
-    );
-    if (!ok) return;
-
-    setSendingId(camp._id);
+  async function handleSendConfirm() {
+    if (!campaignToSend) return;
+    setIsSending(true);
     setSendNotice(null);
     try {
-      const res = await fetch(`/api/campaigns/${camp._id}/send`, { method: "POST" });
+      const res = await fetch(`/api/campaigns/${campaignToSend._id}/send`, { method: "POST" });
       const resData = await res.json();
       if (!res.ok) throw new Error(resData.message || resData.error || "Failed to send campaign");
-      setSendNotice({ type: "success", message: `“${camp.name}” is being sent.` });
+      setSendNotice({ type: "success", message: `“${campaignToSend.name}” is being sent.` });
+      setCampaignToSend(null);
       fetchPendingCampaigns();
       fetchQueueData();
     } catch (err: any) {
       setSendNotice({ type: "error", message: err.message || "Failed to send campaign" });
+      setCampaignToSend(null);
     } finally {
-      setSendingId(null);
+      setIsSending(false);
     }
   }
 
@@ -173,17 +172,8 @@ export default function DeliveryQueuePage() {
                       </td>
                       <td className={`${tbl.td} text-right tabular-nums`}>{formatNumber(camp.recipientCount || 0)}</td>
                       <td className={`${tbl.td} text-right`}>
-                        <button
-                          type="button"
-                          onClick={() => handleSendCampaign(camp)}
-                          disabled={sendingId === camp._id}
-                          className={btnPrimary}
-                        >
-                          {sendingId === camp._id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <Send className="h-4 w-4" aria-hidden="true" />
-                          )}
+                        <button type="button" onClick={() => setCampaignToSend(camp)} className={btnPrimary}>
+                          <Send className="h-4 w-4" aria-hidden="true" />
                           Send
                         </button>
                       </td>
@@ -309,6 +299,16 @@ export default function DeliveryQueuePage() {
           </Panel>
         </div>
       </div>
+
+      {campaignToSend && (
+        <ConfirmSend
+          name={campaignToSend.name}
+          recipientCount={campaignToSend.recipientCount || 0}
+          loading={isSending}
+          onCancel={() => setCampaignToSend(null)}
+          onConfirm={handleSendConfirm}
+        />
+      )}
     </AppLayout>
   );
 }

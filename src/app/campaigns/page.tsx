@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { TablePageSkeleton } from "@/components/ui/Skeleton";
 import {
   ConfirmDelete,
+  ConfirmSend,
   EmptyState,
   Notice,
   PageHeader,
@@ -20,7 +21,7 @@ import {
   iconBtn,
   tbl,
 } from "@/components/ui/page";
-import { BarChart3, Download, FileSpreadsheet, Send, PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { BarChart3, Download, FileSpreadsheet, Send, PlusCircle, Trash2 } from "lucide-react";
 import { formatNumber, formatDate } from "@/lib/utils";
 
 // Campaigns can only be sent from these states — matches the /send route's own check.
@@ -56,26 +57,25 @@ function CampaignsListContent() {
 
   const [campaignToDelete, setCampaignToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [campaignToSend, setCampaignToSend] = useState<any | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  async function handleSendCampaign(camp: any) {
-    const ok = window.confirm(
-      `Send "${camp.name}" to ${formatNumber(camp.recipientCount || 0)} recipients now?\n\nThis cannot be undone.`
-    );
-    if (!ok) return;
-
-    setSendingId(camp._id);
+  async function handleSendConfirm() {
+    if (!campaignToSend) return;
+    setIsSending(true);
     try {
-      const res = await fetch(`/api/campaigns/${camp._id}/send`, { method: "POST" });
+      const res = await fetch(`/api/campaigns/${campaignToSend._id}/send`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || "Failed to send campaign");
-      setNotification({ type: "success", message: `“${camp.name}” is being sent.` });
+      setNotification({ type: "success", message: `“${campaignToSend.name}” is being sent.` });
+      setCampaignToSend(null);
       loadCampaigns();
     } catch (err: any) {
       setNotification({ type: "error", message: err.message || "Failed to send campaign" });
+      setCampaignToSend(null);
     } finally {
-      setSendingId(null);
+      setIsSending(false);
     }
   }
 
@@ -227,13 +227,12 @@ function CampaignsListContent() {
                             {SENDABLE_STATUSES.has(camp.status) && (
                               <button
                                 type="button"
-                                onClick={() => handleSendCampaign(camp)}
-                                disabled={sendingId === camp._id}
+                                onClick={() => setCampaignToSend(camp)}
                                 className={`${iconBtn} hover:!bg-indigo-50 hover:!text-indigo-600 dark:hover:!bg-indigo-500/10`}
                                 aria-label={`Send ${camp.name}`}
                                 title="Send campaign"
                               >
-                                {sendingId === camp._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                <Send className="h-4 w-4" />
                               </button>
                             )}
                             <Link href={`/click-analytics?campaignId=${camp._id}`} className={iconBtn} aria-label={`Click analytics for ${camp.name}`} title="Click analytics">
@@ -265,6 +264,16 @@ function CampaignsListContent() {
 
       {campaignToDelete && (
         <ConfirmDelete name={campaignToDelete.name} loading={isDeleting} onCancel={() => setCampaignToDelete(null)} onConfirm={handleDeleteConfirm} />
+      )}
+
+      {campaignToSend && (
+        <ConfirmSend
+          name={campaignToSend.name}
+          recipientCount={campaignToSend.recipientCount || 0}
+          loading={isSending}
+          onCancel={() => setCampaignToSend(null)}
+          onConfirm={handleSendConfirm}
+        />
       )}
     </AppLayout>
   );

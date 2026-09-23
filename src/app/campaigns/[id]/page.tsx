@@ -58,6 +58,7 @@ export default function CampaignReportDetailPage({
   // Deletion modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Send confirmation modal state
   const [showSendModal, setShowSendModal] = useState(false);
@@ -110,14 +111,16 @@ export default function CampaignReportDetailPage({
 
   async function handleDeleteCampaign() {
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete campaign");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed to delete campaign");
       router.push("/campaigns");
     } catch (err: any) {
-      alert(err.message || "Failed to delete campaign");
+      setDeleteError(err.message || "Failed to delete campaign");
       setIsDeleting(false);
     }
   }
@@ -619,11 +622,18 @@ export default function CampaignReportDetailPage({
               </p>
             </div>
 
+            {deleteError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">{deleteError}</div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
                 variant="outline"
                 size="md"
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
                 disabled={isDeleting}
               >
                 Cancel

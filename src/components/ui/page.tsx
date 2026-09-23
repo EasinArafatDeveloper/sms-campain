@@ -5,7 +5,7 @@
  * toolbars, tables and empty states as the dashboard.
  */
 import React from "react";
-import { AlertTriangle, CheckCircle2, Loader2, Search, Trash2, X, type LucideIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Search, Send, Trash2, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ----------------------------------------------------------------- header */
@@ -263,6 +263,65 @@ export function ConfirmDelete({
           <button type="button" onClick={onConfirm} disabled={loading} className={btnDanger}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
             {loading ? "Deleting…" : "Delete campaign"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------- send dialog */
+
+export function ConfirmSend({
+  name,
+  recipientCount,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  name: string;
+  recipientCount: number;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !loading && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [loading, onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={() => !loading && onCancel()}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="send-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900"
+      >
+        <div className="flex items-start gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+            <Send className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h3 id="send-title" className="font-display text-lg font-bold text-slate-900 dark:text-white">
+              Send this campaign now?
+            </h3>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              <strong className="font-semibold text-slate-900 dark:text-white">{name}</strong> will be sent to{" "}
+              <strong className="font-semibold text-slate-900 dark:text-white">{recipientCount.toLocaleString()}</strong> recipient
+              {recipientCount === 1 ? "" : "s"}. This cannot be undone.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-2.5">
+          <button type="button" onClick={onCancel} disabled={loading} className={btnSecondary}>
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm} disabled={loading} className={btnPrimary}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+            {loading ? "Sending…" : "Yes, send now"}
           </button>
         </div>
       </div>
