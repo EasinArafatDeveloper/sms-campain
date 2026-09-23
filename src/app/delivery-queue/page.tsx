@@ -6,15 +6,25 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, PageHeader, Panel, SelectBox, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
+import { EmptyState, Notice, PageHeader, Panel, SelectBox, btnPrimary, btnSecondary, tbl } from "@/components/ui/page";
 import { AlertTriangle, CheckCircle2, ListOrdered, Loader2, Play, RotateCw, Send, Server } from "lucide-react";
 import { formatNumber, formatDateTime } from "@/lib/utils";
+
+// Campaigns can only be sent from these states — matches the /send route's own check.
+const SENDABLE_STATUSES = new Set(["draft", "scheduled", "paused", "failed"]);
 
 export default function DeliveryQueuePage() {
   const [data, setData] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Campaigns that exist but haven't been sent yet — the actual "send from here" entry
+  // point, since a campaign's messages only join the queue below once you send it.
+  const [pendingCampaigns, setPendingCampaigns] = useState<any[]>([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendNotice, setSendNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const fetchQueueData = async () => {
     try {
@@ -27,12 +37,51 @@ export default function DeliveryQueuePage() {
     }
   };
 
+  const fetchPendingCampaigns = async () => {
+    try {
+      const res = await fetch("/api/campaigns?limit=50");
+      const json = await res.json();
+      const all = json.data || [];
+      setPendingCampaigns(all.filter((c: any) => SENDABLE_STATUSES.has(c.status)));
+    } catch (err) {
+      console.error("Failed to load pending campaigns", err);
+    } finally {
+      setIsLoadingPending(false);
+    }
+  };
+
   useEffect(() => {
     fetchQueueData();
     const interval = setInterval(fetchQueueData, 5000); // refresh every 5s
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  useEffect(() => {
+    fetchPendingCampaigns();
+  }, []);
+
+  async function handleSendCampaign(camp: any) {
+    const ok = window.confirm(
+      `Send "${camp.name}" to ${formatNumber(camp.recipientCount || 0)} recipients now?\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+
+    setSendingId(camp._id);
+    setSendNotice(null);
+    try {
+      const res = await fetch(`/api/campaigns/${camp._id}/send`, { method: "POST" });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.message || resData.error || "Failed to send campaign");
+      setSendNotice({ type: "success", message: `“${camp.name}” is being sent.` });
+      fetchPendingCampaigns();
+      fetchQueueData();
+    } catch (err: any) {
+      setSendNotice({ type: "error", message: err.message || "Failed to send campaign" });
+    } finally {
+      setSendingId(null);
+    }
+  }
 
   const handleProcessBatch = async () => {
     setIsProcessing(true);
@@ -90,6 +139,61 @@ export default function DeliveryQueuePage() {
             </>
           }
         />
+
+        {sendNotice && (
+          <Notice type={sendNotice.type} onClose={() => setSendNotice(null)}>
+            {sendNotice.message}
+          </Notice>
+        )}
+
+        {!isLoadingPending && pendingCampaigns.length > 0 && (
+          <Panel flush title="Ready to send" description="Campaigns that have links generated but haven’t gone out yet.">
+            <div className={tbl.wrap}>
+              <table className={tbl.table}>
+                <thead className={tbl.head}>
+                  <tr>
+                    <th className={tbl.th}>Campaign</th>
+                    <th className={tbl.th}>Status</th>
+                    <th className={`${tbl.th} text-right`}>Recipients</th>
+                    <th className={`${tbl.th} text-right`}>
+                      <span className="sr-only">Send</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className={tbl.body}>
+                  {pendingCampaigns.map((camp) => (
+                    <tr key={camp._id} className={tbl.row}>
+                      <td className={tbl.td}>
+                        <Link href={`/campaigns/${camp._id}`} className="font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-300">
+                          {camp.name}
+                        </Link>
+                      </td>
+                      <td className={tbl.td}>
+                        <StatusBadge status={camp.status} />
+                      </td>
+                      <td className={`${tbl.td} text-right tabular-nums`}>{formatNumber(camp.recipientCount || 0)}</td>
+                      <td className={`${tbl.td} text-right`}>
+                        <button
+                          type="button"
+                          onClick={() => handleSendCampaign(camp)}
+                          disabled={sendingId === camp._id}
+                          className={btnPrimary}
+                        >
+                          {sendingId === camp._id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Send className="h-4 w-4" aria-hidden="true" />
+                          )}
+                          Send
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard label="Waiting" value={waiting} tone="blue" icon={ListOrdered} sub={waiting > 0 ? `${formatNumber(stats.processing)} being sent right now` : "Queue is empty"} />
