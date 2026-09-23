@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTenant, TenantContext } from "@/lib/auth";
-import { CampaignModel, OrganizationModel, ApiCredentialModel } from "@/lib/db/models";
+import { CampaignModel, OrganizationModel, ApiCredentialModel, AuditLogModel } from "@/lib/db/models";
 import { CampaignService } from "@/lib/services/campaign.service";
 import { DeliveryService } from "@/lib/services/delivery.service";
 import { queueSmsBatch } from "@/lib/queue";
@@ -77,6 +77,25 @@ export const POST = withTenant(
       // Trigger the queue (Redis worker or in-process fallback) and run an initial batch now.
       await queueSmsBatch(orgId, id);
       const result = await DeliveryService.processBatch(orgId, 50, id);
+
+      // Record that this campaign was actually dispatched (not just created) so the
+      // superadmin audit log can show exactly when/who sent it and to how many numbers.
+      if (!alreadyEnqueued) {
+        await AuditLogModel.create({
+          organizationId: orgObjId,
+          userId: new mongoose.Types.ObjectId(ctx.userId),
+          userName: ctx.userName,
+          action: "CAMPAIGN_SENT",
+          resourceType: "campaign",
+          resourceId: id,
+          metadata: {
+            campaignName: campaign.name,
+            senderId: campaign.senderId,
+            recipientsEnqueued: enqueued,
+            dispatchedImmediately: result.sent,
+          },
+        });
+      }
 
       return NextResponse.json({
         success: true,

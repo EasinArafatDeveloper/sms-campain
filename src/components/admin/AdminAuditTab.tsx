@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AdminAuditLog } from "@/types/admin";
 import {
   ShieldCheck,
@@ -13,8 +13,39 @@ import {
   User,
   Building2,
   FileText,
+  MessageSquareText,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+interface CampaignRecipientRow {
+  _id: string;
+  phone: string;
+  recipientName?: string;
+  personalizedMessage: string;
+  deliveryStatus: string;
+  clickCount: number;
+  sentAt?: string;
+  deliveredAt?: string;
+  errorMessage?: string;
+}
+
+interface CampaignRecipientsResponse {
+  campaign: {
+    name: string;
+    status: string;
+    senderId: string;
+    totalRecipients: number;
+    sentCount: number;
+    organization?: { name: string };
+  };
+  recipients: CampaignRecipientRow[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 
 interface AdminAuditTabProps {
   logs: AdminAuditLog[];
@@ -30,6 +61,53 @@ export function AdminAuditTab({
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [selectedLog, setSelectedLog] = useState<AdminAuditLog | null>(null);
+
+  // SMS recipients drill-down for campaign-related log entries
+  const [recipientsData, setRecipientsData] = useState<CampaignRecipientsResponse | null>(null);
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
+  const [recipientsError, setRecipientsError] = useState<string | null>(null);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [recipientPage, setRecipientPage] = useState(1);
+
+  const isCampaignLog = selectedLog?.resourceType?.toLowerCase() === "campaign" && !!selectedLog?.resourceId;
+
+  useEffect(() => {
+    if (!isCampaignLog || !selectedLog) {
+      setRecipientsData(null);
+      setRecipientsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      setIsLoadingRecipients(true);
+      setRecipientsError(null);
+      try {
+        const params = new URLSearchParams({ page: String(recipientPage), limit: "20" });
+        if (recipientSearch.trim()) params.set("search", recipientSearch.trim());
+        const res = await fetch(`/api/admin/campaigns/${selectedLog.resourceId}/recipients?${params}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load SMS recipients");
+        if (!cancelled) setRecipientsData(data);
+      } catch (err: any) {
+        if (!cancelled) setRecipientsError(err.message || "Failed to load SMS recipients");
+      } finally {
+        if (!cancelled) setIsLoadingRecipients(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCampaignLog, selectedLog, recipientPage, recipientSearch]);
+
+  function closeLogModal() {
+    setSelectedLog(null);
+    setRecipientsData(null);
+    setRecipientsError(null);
+    setRecipientSearch("");
+    setRecipientPage(1);
+  }
 
   const filteredLogs = logs.filter((log) => {
     if (actionFilter !== "all" && !log.action.toLowerCase().includes(actionFilter.toLowerCase())) {
@@ -78,6 +156,7 @@ export function AdminAuditTab({
             className="px-2.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden"
           >
             <option value="all">All Audit Actions</option>
+            <option value="CAMPAIGN">Campaigns (Created / Sent / Deleted)</option>
             <option value="CREDITS">Credits Adjustments</option>
             <option value="USER">User Updates</option>
             <option value="ORGANIZATION">Organization / Workspace</option>
@@ -204,17 +283,17 @@ export function AdminAuditTab({
         </div>
       </div>
 
-      {/* 3. Metadata Detail Modal */}
+      {/* 3. Metadata / SMS Recipients Detail Modal */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
+          <div className={`w-full ${isCampaignLog ? "max-w-3xl" : "max-w-lg"} rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto`}>
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Audit Log Inspection</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{selectedLog.action}</p>
               </div>
               <button
-                onClick={() => setSelectedLog(null)}
+                onClick={closeLogModal}
                 className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
               >
                 <X className="w-4 h-4" />
@@ -233,6 +312,115 @@ export function AdminAuditTab({
                 </div>
               </div>
 
+              {/* SMS Recipients drill-down: only for campaign-related audit entries */}
+              {isCampaignLog && (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-200">
+                      <MessageSquareText className="w-3.5 h-3.5" />
+                      <span>SMS Recipients</span>
+                      {recipientsData && (
+                        <span className="font-normal text-slate-400">
+                          — {recipientsData.campaign.sentCount} of {recipientsData.campaign.totalRecipients} sent
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative w-40">
+                      <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={recipientSearch}
+                        onChange={(e) => {
+                          setRecipientSearch(e.target.value);
+                          setRecipientPage(1);
+                        }}
+                        placeholder="Search phone..."
+                        className="w-full pl-6 pr-2 py-1 text-2xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {isLoadingRecipients ? (
+                    <div className="py-8 flex items-center justify-center text-slate-400 gap-2 text-2xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Loading recipients...</span>
+                    </div>
+                  ) : recipientsError ? (
+                    <div className="py-6 text-center text-2xs text-red-500">{recipientsError}</div>
+                  ) : !recipientsData || recipientsData.recipients.length === 0 ? (
+                    <div className="py-6 text-center text-2xs text-slate-400">
+                      No recipients found{recipientSearch ? " for this search" : " — this campaign has not been sent yet"}.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto max-h-64">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/80 dark:bg-slate-800/40 text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0">
+                              <th className="py-2 px-3">Phone</th>
+                              <th className="py-2 px-3">Message Sent</th>
+                              <th className="py-2 px-3">Status</th>
+                              <th className="py-2 px-3">Sent At</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-2xs">
+                            {recipientsData.recipients.map((r) => (
+                              <tr key={r._id}>
+                                <td className="py-2 px-3 font-mono font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                                  {r.phone}
+                                </td>
+                                <td className="py-2 px-3 text-slate-500 dark:text-slate-400 max-w-[260px] truncate" title={r.personalizedMessage}>
+                                  {r.personalizedMessage}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded-full text-2xs font-bold uppercase ${
+                                      r.deliveryStatus === "delivered" || r.deliveryStatus === "sent"
+                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                        : r.deliveryStatus === "failed"
+                                        ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                    }`}
+                                    title={r.errorMessage || undefined}
+                                  >
+                                    {r.deliveryStatus}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                  {r.sentAt ? new Date(r.sentAt).toLocaleString() : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {recipientsData.totalPages > 1 && (
+                        <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-2xs text-slate-500">
+                          <span>Page {recipientsData.page} of {recipientsData.totalPages} ({recipientsData.total} total)</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setRecipientPage((p) => Math.max(1, p - 1))}
+                              disabled={recipientsData.page <= 1}
+                              className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              <ChevronLeft className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => setRecipientPage((p) => Math.min(recipientsData.totalPages, p + 1))}
+                              disabled={recipientsData.page >= recipientsData.totalPages}
+                              className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
               <div>
                 <span className="text-slate-500 font-semibold mb-1 block">Full Metadata & Payload:</span>
                 <pre className="p-3 rounded-xl bg-slate-950 text-slate-200 text-2xs font-mono overflow-x-auto max-h-60">
@@ -243,7 +431,7 @@ export function AdminAuditTab({
 
             <div className="flex justify-end pt-2">
               <button
-                onClick={() => setSelectedLog(null)}
+                onClick={closeLogModal}
                 className="px-4 py-2 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
               >
                 Close
