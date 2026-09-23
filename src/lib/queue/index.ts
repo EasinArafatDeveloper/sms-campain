@@ -40,10 +40,11 @@ export async function queueSmsBatch(organizationId: string, campaignId: string):
   if (deliveryQueue) {
     await deliveryQueue.add("process-campaign-batch", { organizationId, campaignId });
   } else {
-    // Process in background asynchronously
+    // Process in background asynchronously — scoped to this campaign only, so sending
+    // one campaign can never sweep up other queued/draft campaigns in the same org.
     setTimeout(async () => {
       try {
-        await DeliveryService.processBatch(organizationId, 100);
+        await DeliveryService.processBatch(organizationId, 100, campaignId);
       } catch (err) {
         console.error("[Queue] Error in fallback queue batch processor:", err);
       }

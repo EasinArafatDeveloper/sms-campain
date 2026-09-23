@@ -415,7 +415,9 @@ function CreateCampaignForm() {
 
       const data = await res.json();
       if (res.ok) {
-        router.push(`/link-generator?campaignId=${data.campaign?._id || ""}`);
+        // Land on the campaign's own page — it's created as a draft (nothing has been
+        // sent yet), and this is where the explicit "Send Campaign" action lives.
+        router.push(`/campaigns/${data.campaign?._id || ""}`);
       } else {
         setLaunchError(data.error || "The campaign could not be created. Please try again.");
       }

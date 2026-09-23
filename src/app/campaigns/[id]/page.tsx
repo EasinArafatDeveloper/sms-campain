@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import { formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 
+const SENDABLE_STATUSES = new Set(["draft", "scheduled", "paused", "failed"]);
+
 export default function CampaignReportDetailPage({
   params,
 }: {
@@ -56,6 +58,11 @@ export default function CampaignReportDetailPage({
   // Deletion modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Send confirmation modal state
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   async function loadCampaignReport() {
     try {
@@ -84,6 +91,22 @@ export default function CampaignReportDetailPage({
     setCopiedLink(text);
     setTimeout(() => setCopiedLink(null), 2000);
   };
+
+  async function handleSendCampaign() {
+    setIsSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/send`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || json.error || "Failed to send campaign");
+      setShowSendModal(false);
+      await loadCampaignReport();
+    } catch (err: any) {
+      setSendError(err.message || "Failed to send campaign");
+    } finally {
+      setIsSending(false);
+    }
+  }
 
   async function handleDeleteCampaign() {
     setIsDeleting(true);
@@ -145,6 +168,20 @@ export default function CampaignReportDetailPage({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {SENDABLE_STATUSES.has(campaign.status) && (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setSendError(null);
+                  setShowSendModal(true);
+                }}
+                className="gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>{campaign.status === "scheduled" ? "Send Now" : "Send Campaign"}</span>
+              </Button>
+            )}
             <Button variant="outline" size="md" onClick={() => loadCampaignReport()} className="gap-1.5" title="Refresh Live Stats">
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
@@ -506,6 +543,50 @@ export default function CampaignReportDetailPage({
           )}
         </Card>
       </div>
+
+      {/* Send Campaign Confirmation Modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <Send className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">Send this campaign now?</h3>
+                <p className="text-xs text-slate-500">
+                  <strong className="text-slate-800 font-semibold">{campaign.name}</strong> will be dispatched to{" "}
+                  <strong className="text-slate-800 font-semibold">{formatNumber(totalRecipients)}</strong> recipients.
+                  This cannot be undone once messages start going out.
+                </p>
+              </div>
+            </div>
+
+            {sendError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">{sendError}</div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button variant="outline" size="md" onClick={() => setShowSendModal(false)} disabled={isSending}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="md" onClick={handleSendCampaign} disabled={isSending} className="gap-2">
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Yes, Send Now</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Campaign Cascade Modal */}
       {showDeleteModal && (

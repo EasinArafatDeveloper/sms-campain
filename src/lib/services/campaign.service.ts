@@ -52,12 +52,16 @@ export class CampaignService {
     const destUrl = data.destinationUrl.trim();
 
     // 1. Create Campaign Document
+    // NOTE: status starts as "draft"/"scheduled" — NOT "queued". Delivery jobs are only
+    // created (and become dispatch-eligible) when enqueueForDelivery() runs from an
+    // explicit Send action, so creating a campaign can never silently send messages.
+    const isFutureSchedule = !!data.scheduledAt && new Date(data.scheduledAt).getTime() > Date.now();
     const campaign = await CampaignModel.create({
       organizationId: orgObjId,
       name: data.name.trim(),
       senderId: data.senderId.trim(),
       message: data.message,
-      status: "queued",
+      status: isFutureSchedule ? "scheduled" : "draft",
       audienceId: data.audienceId ? new mongoose.Types.ObjectId(data.audienceId) : undefined,
       audienceName: data.audienceName || "Custom Audience",
       recipientCount: 0,
@@ -152,7 +156,6 @@ export class CampaignService {
 
       const trackingLinksToInsert: any[] = [];
       const campaignRecipientsToInsert: any[] = [];
-      const deliveryJobsToInsert: any[] = [];
 
       for (let i = 0; i < totalRecipients; i++) {
         const item = recipientsList[i];
@@ -197,23 +200,11 @@ export class CampaignService {
           trackingId,
           trackingUrl: uniqueUrl,
           personalizedMessage,
+          // "queued" here just means "not yet sent" for the recipient-level record; the
+          // actual DeliveryJob dispatch queue is only populated by enqueueForDelivery().
           deliveryStatus: "queued",
           clickStatus: "not_clicked",
           clickCount: 0,
-        });
-
-        deliveryJobsToInsert.push({
-          organizationId: orgObjId,
-          campaignId: campaign._id,
-          recipientId: item.recipientId,
-          trackingId,
-          phone: item.phone,
-          message: personalizedMessage,
-          senderId: data.senderId,
-          provider: "zendsms",
-          status: "queued",
-          attempts: 0,
-          maxAttempts: 3,
         });
       }
 
@@ -222,14 +213,12 @@ export class CampaignService {
       for (let i = 0; i < trackingLinksToInsert.length; i += chunkSize) {
         await TrackingLinkModel.insertMany(trackingLinksToInsert.slice(i, i + chunkSize));
         await CampaignRecipientModel.insertMany(campaignRecipientsToInsert.slice(i, i + chunkSize));
-        await DeliveryJobModel.insertMany(deliveryJobsToInsert.slice(i, i + chunkSize));
       }
 
       campaign.statistics.linksGenerated = totalRecipients;
-      campaign.statistics.queued = totalRecipients;
-      campaign.status = "queued";
-    } else {
-      campaign.status = "draft";
+      // campaign.status was already set to "draft" or "scheduled" above — it is NOT
+      // flipped to "queued" here, so no DeliveryJob exists yet and nothing can be sent
+      // until enqueueForDelivery() runs from an explicit Send action.
     }
 
     await campaign.save();
@@ -245,6 +234,70 @@ export class CampaignService {
     });
 
     return campaign.toObject() as unknown as ICampaign;
+  }
+
+  /**
+   * Builds the DeliveryJob dispatch queue for a campaign from its already-generated
+   * CampaignRecipient rows. This is the ONLY place DeliveryJob rows are created — a
+   * campaign is never dispatch-eligible until this runs, which only happens from an
+   * explicit Send action (or the worker firing a due scheduled campaign).
+   * Idempotent: a campaign that already has DeliveryJob rows is not re-enqueued, so a
+   * duplicate Send click (or a retried request) can never double-queue the same messages.
+   */
+  static async enqueueForDelivery(
+    organizationId: string,
+    campaignId: string
+  ): Promise<{ enqueued: number; alreadyEnqueued: boolean }> {
+    await connectToDatabase();
+    const orgObjId = new mongoose.Types.ObjectId(organizationId);
+    const campObjId = new mongoose.Types.ObjectId(campaignId);
+
+    const campaign = await CampaignModel.findOne({ _id: campObjId, organizationId: orgObjId });
+    if (!campaign) {
+      return { enqueued: 0, alreadyEnqueued: false };
+    }
+
+    const existingJobs = await DeliveryJobModel.countDocuments({
+      organizationId: orgObjId,
+      campaignId: campObjId,
+    });
+    if (existingJobs > 0) {
+      return { enqueued: 0, alreadyEnqueued: true };
+    }
+
+    const recipients = await CampaignRecipientModel.find({
+      organizationId: orgObjId,
+      campaignId: campObjId,
+    }).lean();
+    if (recipients.length === 0) {
+      return { enqueued: 0, alreadyEnqueued: false };
+    }
+
+    const jobs = recipients.map((r: any) => ({
+      organizationId: orgObjId,
+      campaignId: campObjId,
+      recipientId: r.recipientId,
+      trackingId: r.trackingId,
+      phone: r.phone,
+      message: r.personalizedMessage,
+      senderId: campaign.senderId,
+      provider: "zendsms",
+      status: "queued",
+      attempts: 0,
+      maxAttempts: 3,
+    }));
+
+    const chunkSize = 1000;
+    for (let i = 0; i < jobs.length; i += chunkSize) {
+      await DeliveryJobModel.insertMany(jobs.slice(i, i + chunkSize));
+    }
+
+    await CampaignModel.updateOne(
+      { _id: campObjId },
+      { $set: { "statistics.queued": jobs.length } }
+    );
+
+    return { enqueued: jobs.length, alreadyEnqueued: false };
   }
 
   /**

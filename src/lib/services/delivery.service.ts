@@ -215,9 +215,19 @@ export class DeliveryService {
     const orgObjId = new mongoose.Types.ObjectId(organizationId);
     const provider = await getSmsProviderForOrg(organizationId);
 
+    // A tenant with their own working ZendSMS key (BYOK) is billed by ZendSMS directly —
+    // platform smsCredits must never be checked or deducted for their sends.
+    const usesPlatformCredits = !(await ApiCredentialModel.exists({
+      organizationId: orgObjId,
+      isDefault: true,
+      apiKey: { $exists: true, $ne: "" },
+    }));
+
     const query: any = {
       organizationId: orgObjId,
       status: { $in: ["queued", "retrying", "pending_retry"] },
+      // Honor exponential backoff: a job with a future nextRetryAt is not picked up yet.
+      $or: [{ nextRetryAt: { $exists: false } }, { nextRetryAt: null }, { nextRetryAt: { $lte: new Date() } }],
     };
 
     if (campaignId) {
@@ -234,17 +244,20 @@ export class DeliveryService {
     let outOfCredits = false;
 
     for (const candidate of candidateJobs) {
-      // 1. Check & Atomically Deduct 1 Credit from Organization Wallet
-      const orgCreditDeduction = await OrganizationModel.findOneAndUpdate(
-        { _id: orgObjId, smsCredits: { $gt: 0 } },
-        { $inc: { smsCredits: -1 } },
-        { new: true }
-      );
+      // 1. Check & atomically deduct 1 credit from the organization wallet — only when
+      // the platform's shared gateway is actually being used for this send.
+      if (usesPlatformCredits) {
+        const orgCreditDeduction = await OrganizationModel.findOneAndUpdate(
+          { _id: orgObjId, smsCredits: { $gt: 0 } },
+          { $inc: { smsCredits: -1 } },
+          { new: true }
+        );
 
-      if (!orgCreditDeduction) {
-        // Out of SMS credits: do not dispatch further
-        outOfCredits = true;
-        break;
+        if (!orgCreditDeduction) {
+          // Out of SMS credits: do not dispatch further
+          outOfCredits = true;
+          break;
+        }
       }
 
       // 2. Atomically claim job (prevents dual-worker race conditions)
@@ -262,7 +275,9 @@ export class DeliveryService {
 
       if (!job) {
         // Already claimed by another worker, refund credit
-        await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+        if (usesPlatformCredits) {
+          await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+        }
         continue;
       }
 
@@ -315,7 +330,9 @@ export class DeliveryService {
         });
       } else {
         // Refund credit on immediate failure
-        await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+        if (usesPlatformCredits) {
+          await OrganizationModel.updateOne({ _id: orgObjId }, { $inc: { smsCredits: 1 } });
+        }
 
         if (job.attempts < job.maxAttempts) {
           job.status = "pending_retry";
