@@ -81,9 +81,9 @@ function TrackingLinksContent() {
       try {
         const campParam = selectedCampaign !== "all" ? `&campaignId=${selectedCampaign}` : "";
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-        const res = await fetch(`/api/delivery-queue?limit=50${campParam}${searchParam}`);
+        const res = await fetch(`/api/tracking-links?limit=50${campParam}${searchParam}`);
         const json = await res.json();
-        setMappings(json.jobs || []);
+        setMappings(json.links || []);
         setTotalCount(json.total || 0);
       } catch (err) {
         console.error("Failed to load tracking links", err);
@@ -144,7 +144,7 @@ function TrackingLinksContent() {
             <EmptyState
               icon={Link2}
               title="No tracking links yet"
-              body="Links are created automatically for every recipient when you send a campaign."
+              body="Links are created automatically for every recipient as soon as you create a campaign — no need to send it first."
               action={
                 <Link href="/campaigns/new" className={btnPrimary}>
                   <PlusCircle className="h-4 w-4" aria-hidden="true" />

@@ -20,8 +20,11 @@ import {
   iconBtn,
   tbl,
 } from "@/components/ui/page";
-import { BarChart3, Download, FileSpreadsheet, Send, PlusCircle, Trash2 } from "lucide-react";
+import { BarChart3, Download, FileSpreadsheet, Send, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { formatNumber, formatDate } from "@/lib/utils";
+
+// Campaigns can only be sent from these states — matches the /send route's own check.
+const SENDABLE_STATUSES = new Set(["draft", "scheduled", "paused", "failed"]);
 
 export default function CampaignsListPage() {
   return (
@@ -53,7 +56,28 @@ function CampaignsListContent() {
 
   const [campaignToDelete, setCampaignToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  async function handleSendCampaign(camp: any) {
+    const ok = window.confirm(
+      `Send "${camp.name}" to ${formatNumber(camp.recipientCount || 0)} recipients now?\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+
+    setSendingId(camp._id);
+    try {
+      const res = await fetch(`/api/campaigns/${camp._id}/send`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to send campaign");
+      setNotification({ type: "success", message: `“${camp.name}” is being sent.` });
+      loadCampaigns();
+    } catch (err: any) {
+      setNotification({ type: "error", message: err.message || "Failed to send campaign" });
+    } finally {
+      setSendingId(null);
+    }
+  }
 
   async function loadCampaigns() {
     try {
@@ -200,6 +224,18 @@ function CampaignsListContent() {
                         </td>
                         <td className={tbl.td}>
                           <div className="flex items-center justify-end gap-0.5">
+                            {SENDABLE_STATUSES.has(camp.status) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSendCampaign(camp)}
+                                disabled={sendingId === camp._id}
+                                className={`${iconBtn} hover:!bg-indigo-50 hover:!text-indigo-600 dark:hover:!bg-indigo-500/10`}
+                                aria-label={`Send ${camp.name}`}
+                                title="Send campaign"
+                              >
+                                {sendingId === camp._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                              </button>
+                            )}
                             <Link href={`/click-analytics?campaignId=${camp._id}`} className={iconBtn} aria-label={`Click analytics for ${camp.name}`} title="Click analytics">
                               <BarChart3 className="h-4 w-4" />
                             </Link>

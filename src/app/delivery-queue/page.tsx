@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { StatusBadge, Badge } from "@/components/ui/Badge";
@@ -122,7 +123,16 @@ export default function DeliveryQueuePage() {
             }
           >
             {jobs.length === 0 ? (
-              <EmptyState icon={ListOrdered} title="Nothing here yet" body="Messages from your campaigns show up here as soon as they are queued." />
+              <EmptyState
+                icon={ListOrdered}
+                title="Nothing here yet"
+                body="Messages show up here once a campaign is sent. Open a draft campaign and hit “Send Campaign” to start."
+                action={
+                  <Link href="/campaigns" className={btnPrimary}>
+                    Go to Campaigns
+                  </Link>
+                }
+              />
             ) : (
               <div className={tbl.wrap}>
                 <table className={tbl.table}>
