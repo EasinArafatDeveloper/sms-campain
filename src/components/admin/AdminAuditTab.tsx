@@ -17,6 +17,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  MousePointerClick,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -26,6 +27,7 @@ interface CampaignRecipientRow {
   recipientName?: string;
   personalizedMessage: string;
   deliveryStatus: string;
+  clickStatus: string;
   clickCount: number;
   sentAt?: string;
   deliveredAt?: string;
@@ -353,46 +355,50 @@ export function AdminAuditTab({
                     </div>
                   ) : (
                     <>
-                      <div className="overflow-x-auto max-h-64">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="bg-slate-50/80 dark:bg-slate-800/40 text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0">
-                              <th className="py-2 px-3">Phone</th>
-                              <th className="py-2 px-3">Message Sent</th>
-                              <th className="py-2 px-3">Status</th>
-                              <th className="py-2 px-3">Sent At</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-2xs">
-                            {recipientsData.recipients.map((r) => (
-                              <tr key={r._id}>
-                                <td className="py-2 px-3 font-mono font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                                  {r.phone}
-                                </td>
-                                <td className="py-2 px-3 text-slate-500 dark:text-slate-400 max-w-[260px] truncate" title={r.personalizedMessage}>
-                                  {r.personalizedMessage}
-                                </td>
-                                <td className="py-2 px-3">
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded-full text-2xs font-bold uppercase ${
-                                      r.deliveryStatus === "delivered" || r.deliveryStatus === "sent"
-                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                                        : r.deliveryStatus === "failed"
-                                        ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                                    }`}
-                                    title={r.errorMessage || undefined}
-                                  >
-                                    {r.deliveryStatus}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {/* Card list instead of a table: an SMS message is often longer than any
+                          fixed column, so each row shows phone/status/time on one line and the
+                          FULL message text wrapped underneath — never truncated or hover-only. */}
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {recipientsData.recipients.map((r) => (
+                          <div key={r._id} className="p-3 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-mono font-bold text-2xs text-slate-800 dark:text-slate-200">{r.phone}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded-full text-2xs font-bold uppercase ${
+                                    r.deliveryStatus === "delivered" || r.deliveryStatus === "sent"
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                      : r.deliveryStatus === "failed"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                  }`}
+                                  title={r.errorMessage || undefined}
+                                >
+                                  {r.deliveryStatus}
+                                </span>
+                                <span className="text-2xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
                                   {r.sentAt ? new Date(r.sentAt).toLocaleString() : "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-2xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap break-words">
+                              {r.personalizedMessage}
+                            </p>
+                            <div>
+                              {r.clickStatus === "clicked" ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                                  <MousePointerClick className="w-3 h-3" />
+                                  Clicked {r.clickCount > 1 ? `× ${r.clickCount}` : ""}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-2xs text-slate-400 dark:text-slate-500">
+                                  <MousePointerClick className="w-3 h-3" />
+                                  Not clicked
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       {recipientsData.totalPages > 1 && (
