@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/lib/brand";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { ActivityFeed } from "@/components/auth/auth-visuals";
@@ -25,6 +26,7 @@ function safeCallback(): string {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +56,9 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (res.ok) {
+        // Refresh the shared auth context now, before navigating, so the header/sidebar
+        // render the signed-in user immediately instead of a stale "logged out" state.
+        await refreshUser();
         const explicit = new URLSearchParams(window.location.search).get("callbackUrl");
         // Super admins land on the admin console unless they were sent here from a specific page
         router.push(explicit ? safeCallback() : data.user?.platformRole === "superadmin" ? "/admin" : "/dashboard");

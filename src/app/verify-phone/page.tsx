@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ShieldCheck, Smartphone, ArrowRight, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/context/AuthContext";
 
 function VerifyPhoneContent() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const searchParams = useSearchParams();
   const initialPhone = searchParams.get("phone") || "";
 
@@ -105,6 +107,7 @@ function VerifyPhoneContent() {
       }
 
       setSuccessMsg("Phone number verified successfully! Redirecting...");
+      await refreshUser(); // pull the updated isPhoneVerified/credits into the shared context
       setTimeout(() => {
         router.push("/dashboard");
       }, 1200);

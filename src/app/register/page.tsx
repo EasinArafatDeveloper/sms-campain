@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building, Lock, Mail, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/lib/brand";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SetupChecklist } from "@/components/auth/auth-visuals";
@@ -26,6 +27,7 @@ function firstDetail(details: unknown): string | null {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,6 +64,8 @@ export default function RegisterPage() {
 
       const data = await res.json();
       if (res.ok) {
+        // Same reason as login: pull the fresh session into context before navigating.
+        await refreshUser();
         router.push("/dashboard");
         router.refresh();
       } else {
